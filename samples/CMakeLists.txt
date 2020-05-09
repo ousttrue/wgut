@@ -1,1 +1,4 @@
-subdirs(empty_window)
+subdirs(
+    empty_window
+    clear_swapchain
+    )

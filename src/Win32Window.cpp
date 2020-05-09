@@ -216,7 +216,7 @@ void Win32Window::Show(int nCmdShow)
     ShowWindow(m_hwnd, nCmdShow);
 }
 
-bool Win32Window::TryGetInput(ScreenState *pState)
+bool Win32Window::TryGetState(ScreenState *pState)
 {
     MSG msg = {};
     while (true)

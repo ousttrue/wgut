@@ -24,7 +24,7 @@ public:
     ~Win32Window();
     HWND Create(const wchar_t *titleName, int width = 0, int height = 0);
     void Show(int nCmdShow = SW_SHOW);
-    bool TryGetInput(ScreenState *pState);
+    bool TryGetState(ScreenState *pState);
     void SetEnableSetCursor(bool enable) { m_enableSetCursor = enable; }
     std::function<void()> OnDestroy;
 
