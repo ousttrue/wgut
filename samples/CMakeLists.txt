@@ -1,0 +1,1 @@
+subdirs(empty_window)
