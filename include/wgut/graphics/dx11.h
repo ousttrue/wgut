@@ -3,6 +3,7 @@
 #include <wrl/client.h>
 #include <dxgi1_3.h>
 #include <vector>
+#include <stdexcept>
 
 namespace wgut
 {
@@ -97,6 +98,71 @@ inline ComPtr<ID3D11Device> CreateDeviceForHardwareAdapter()
 
     return device;
 }
+
+class SwapChainRenderTarget
+{
+    ComPtr<IDXGISwapChain1> m_swapchain;
+    ComPtr<ID3D11RenderTargetView> m_rtv;
+    int m_backbufferWidth = 0;
+    int m_backbufferHeight = 0;
+
+public:
+    SwapChainRenderTarget(const ComPtr<IDXGISwapChain1> swapchain)
+        : m_swapchain(swapchain)
+    {
+    }
+
+    void Update(const ComPtr<ID3D11Device> &device, const wgut::ScreenState &state)
+    {
+        // size check
+        if (m_rtv)
+        {
+            if (m_backbufferWidth != state.Width || m_backbufferHeight != state.Height)
+            {
+                // release RTV
+                m_rtv.Reset();
+
+                // resize
+                DXGI_SWAP_CHAIN_DESC desc;
+                m_swapchain->GetDesc(&desc);
+                m_swapchain->ResizeBuffers(desc.BufferCount, state.Width, state.Height, desc.BufferDesc.Format, desc.Flags);
+
+                m_backbufferWidth = state.Width;
+                m_backbufferHeight = state.Height;
+            }
+        }
+
+        // create RTV if not exists
+        if (!m_rtv)
+        {
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> backbuffer;
+            if (FAILED(m_swapchain->GetBuffer(0, IID_PPV_ARGS(&backbuffer))))
+            {
+                throw std::runtime_error("fail to GetBuffer");
+            }
+
+            if (FAILED(device->CreateRenderTargetView(backbuffer.Get(), nullptr, &m_rtv)))
+            {
+                throw std::runtime_error("fail to create RTV");
+            }
+        }
+    }
+
+    void Begin(const ComPtr<ID3D11DeviceContext> &context, const float clearColor[4])
+    {
+        // clear backbuffer
+        context->ClearRenderTargetView(m_rtv.Get(), clearColor);
+    }
+
+    void End(const ComPtr<ID3D11DeviceContext> &context)
+    {
+        // apply
+        m_swapchain->Present(1, 0);
+
+        // clear rendertarget reference
+        context->OMSetRenderTargets(0, nullptr, nullptr);
+    }
+};
 
 } // namespace d3d11
 

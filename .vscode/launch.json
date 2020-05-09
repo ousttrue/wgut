@@ -26,5 +26,16 @@
             "environment": [],
             "externalConsole": false
         },
+        {
+            "name": "draw_triangle",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "build/samples/draw_triangle/draw_triangle.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }

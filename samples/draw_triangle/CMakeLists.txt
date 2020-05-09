@@ -6,7 +6,7 @@ add_executable(${TARGET_NAME}
 set_property(TARGET ${TARGET_NAME}
 PROPERTY 
     CXX_STANDARD 20
-    )   
+    )
 target_link_libraries(${TARGET_NAME}
 PRIVATE
     wgut

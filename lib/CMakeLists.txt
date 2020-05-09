@@ -12,4 +12,6 @@ PUBLIC
     )
 target_link_libraries(${TARGET_NAME} 
 PUBLIC
+    d3d11
+    dxgi
     )
