@@ -28,50 +28,16 @@ int main(int argc, char **argv)
 
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
 
+    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
     wgut::ScreenState state;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> rtv;
-    int backbufferWidth = 0;
-    int backbufferHeight = 0;
     while (window.TryGetState(&state))
     {
-        // size check
-        if (rtv)
-        {
-            if (backbufferWidth != state.Width || backbufferHeight != state.Height)
-            {
-                // release RTV
-                rtv.Reset();
-
-                // resize
-                DXGI_SWAP_CHAIN_DESC desc;
-                swapchain->GetDesc(&desc);
-                swapchain->ResizeBuffers(desc.BufferCount, state.Width, state.Height, desc.BufferDesc.Format, desc.Flags);
-
-                backbufferWidth = state.Width;
-                backbufferHeight = state.Height;
-            }
-        }
-
-        // create RTV if not exists
-        if (!rtv)
-        {
-            Microsoft::WRL::ComPtr<ID3D11Texture2D> backbuffer;
-            if (FAILED(swapchain->GetBuffer(0, IID_PPV_ARGS(&backbuffer))))
-            {
-                throw std::runtime_error("fail to GetBuffer");
-            }
-
-            if (FAILED(device->CreateRenderTargetView(backbuffer.Get(), nullptr, &rtv)))
-            {
-                throw std::runtime_error("fail to create RTV");
-            }
-        }
-
-        // clear backbuffer
-        context->ClearRenderTargetView(rtv.Get(), clearColor);
-
-        // apply
+        rt.Update(device, state);
+        rt.ClearAndSet(context, clearColor);
         swapchain->Present(1, 0);
+
+        // clear reference
+        context->OMSetRenderTargets(0, nullptr, nullptr);
     }
 
     // window closed

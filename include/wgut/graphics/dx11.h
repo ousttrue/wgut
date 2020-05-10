@@ -148,19 +148,14 @@ public:
         }
     }
 
-    void Begin(const ComPtr<ID3D11DeviceContext> &context, const float clearColor[4])
+    void ClearAndSet(const ComPtr<ID3D11DeviceContext> &context, const float clearColor[4])
     {
         // clear backbuffer
         context->ClearRenderTargetView(m_rtv.Get(), clearColor);
-    }
 
-    void End(const ComPtr<ID3D11DeviceContext> &context)
-    {
-        // apply
-        m_swapchain->Present(1, 0);
-
-        // clear rendertarget reference
-        context->OMSetRenderTargets(0, nullptr, nullptr);
+        ID3D11RenderTargetView *rtvs[] = {
+            m_rtv.Get()};
+        context->OMSetRenderTargets(_countof(rtvs), rtvs, nullptr);
     }
 };
 

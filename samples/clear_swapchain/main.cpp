@@ -28,13 +28,16 @@ int main(int argc, char **argv)
 
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
 
-    wgut::d3d11::SwapChainRenderTarget swrt(swapchain);
+    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
     wgut::ScreenState state;
     while (window.TryGetState(&state))
     {
-        swrt.Update(device, state);
-        swrt.Begin(context, clearColor);
-        swrt.End(context);
+        rt.Update(device, state);
+        rt.ClearAndSet(context, clearColor);
+        swapchain->Present(1, 0);
+
+        // clear reference
+        context->OMSetRenderTargets(0, nullptr, nullptr);
     }
 
     // window closed
