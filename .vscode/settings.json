@@ -4,5 +4,8 @@
         "dxgi",
         "hwnd",
         "wgut"
-    ]
+    ],
+    "files.associations": {
+        "stdexcept": "cpp"
+    }
 }

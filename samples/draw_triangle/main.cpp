@@ -1,5 +1,5 @@
 #include <wgut/Win32Window.h>
-#include <wgut/graphics/dx11.h>
+#include <wgut/graphics/wgut_d3d11.h>
 #include <stdexcept>
 
 int main(int argc, char **argv)
@@ -26,14 +26,28 @@ int main(int argc, char **argv)
         throw std::runtime_error("fail to create swapchain");
     }
 
-    float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
+    float vertices[] = {
+        -0.5f, -0.5f,
+        0.5f, -0.5f,
+        0.0f, 0.5f};
+    uint16_t indices[] = {
+        0, 1, 2};
 
+    auto shader = wgut::d3d11::CreateShader(vs, ps);
+    auto mesh = wgut::d3d11::CreateMesh(device, vertices, indices);
+
+
+    float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
     wgut::d3d11::SwapChainRenderTarget rt(swapchain);
     wgut::ScreenState state;
     while (window.TryGetState(&state))
     {
         rt.Update(device, state);
         rt.ClearAndSet(context, clearColor);
+
+        shader->Setup(context);
+        mesh->Draw(context);
+
         swapchain->Present(1, 0);
 
         // clear reference
