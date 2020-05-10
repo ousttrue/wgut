@@ -16,13 +16,13 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 
 * D3D11 minimum pipeline
 
-### TODO: draw_cube
+### draw_cube
 
 * mouse input, camera projection, constant buffer
 
 ### TODO: cube_material
 
-* dpeth buffer, submesh material
+* depth buffer, submesh material
 
 ### TODO: texture_cube
 

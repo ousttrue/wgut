@@ -1,6 +1,6 @@
 #include <wgut/Win32Window.h>
-#include <wgut/graphics/wgut_d3d11.h>
-#include <wgut/graphics/wgut_shader.h>
+#include <wgut/wgut_d3d11.h>
+#include <wgut/wgut_shader.h>
 #include <wgut/OrbitCamera.h>
 #include <stdexcept>
 #include <iostream>

@@ -1,5 +1,5 @@
 #include <wgut/Win32Window.h>
-#include <wgut/graphics/wgut_d3d11.h>
+#include <wgut/wgut_d3d11.h>
 #include <stdexcept>
 
 int main(int argc, char **argv)
