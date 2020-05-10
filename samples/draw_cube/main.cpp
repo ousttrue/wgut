@@ -23,12 +23,6 @@ cbuffer SceneConstantBuffer : register(b0)
     float4x4 Projection;
 };
 
-cbuffer DrawConstantBuffer : register(b1)
-{
-    float4x4 World: WORLD;
-    float4 Color: DIFFUSE;
-};
-
 PS vsMain(VS input)
 {
     PS output;
@@ -70,7 +64,7 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
         float y;
         float z;
     };
-    // clockwise
+    // counter clockwise ?
     float3 vertices[] = {
         {-1.0f, -1.0f, -1.0f},
         {1.0f, -1.0f, -1.0f},
@@ -97,14 +91,9 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
     auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
 
     auto drawable = std::make_shared<wgut::d3d11::Drawable>(mesh);
-    int offset = 0;
-    for (int i = 0; i < 6; ++i, offset += 6)
-    {
-        auto &submesh = drawable->AddSubmesh(device);
-        submesh->Offset = offset;
-        submesh->Count = 6;
-        submesh->Shader = shader;
-    }
+    auto &submesh = drawable->AddSubmesh();
+    submesh->Count = 36;
+    submesh->Shader = shader;
 
     return drawable;
 }

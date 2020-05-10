@@ -292,7 +292,7 @@ public:
             return false;
         }
 
-        assert(mapped.DepthPitch==SIZE);
+        assert(mapped.DepthPitch == SIZE);
         memcpy(mapped.pData, &m_data, SIZE);
 
         context->Unmap(m_buffer.Get(), 0);
@@ -337,10 +337,13 @@ public:
     {
     }
 
-    SubmeshPtr AddSubmesh(const ComPtr<ID3D11Device> &device)
+    SubmeshPtr AddSubmesh(const ComPtr<ID3D11Device> &device = nullptr)
     {
         auto submesh = std::make_shared<Submesh>();
-        submesh->ConstantBuffer = ConstantBuffer<DrawConstantBuffer>::Create(device);
+        if (device)
+        {
+            submesh->ConstantBuffer = ConstantBuffer<DrawConstantBuffer>::Create(device);
+        }
         m_submeshes.push_back(submesh);
         return submesh;
     }
