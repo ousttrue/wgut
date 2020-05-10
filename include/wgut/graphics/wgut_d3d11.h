@@ -3,9 +3,11 @@
 #include "wgut_dxgi.h"
 #include "wgut_shader.h"
 #include <gsl/span>
+#include <directXMath.h>
 
 namespace wgut::d3d11
 {
+using namespace DirectX;
 
 inline ComPtr<ID3D11Device> CreateDeviceForHardwareAdapter()
 {
@@ -190,12 +192,7 @@ public:
         throw std::runtime_error("not implemented");
     }
 
-    void Draw(const ComPtr<ID3D11DeviceContext> &context)
-    {
-        Draw(context, m_indexCount, 0);
-    }
-
-    void Draw(const ComPtr<ID3D11DeviceContext> &context, UINT drawCount, UINT drawOffset)
+    void Setup(const ComPtr<ID3D11DeviceContext> &context)
     {
         context->IASetInputLayout(m_layout.Get());
         context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -211,6 +208,10 @@ public:
         context->IASetVertexBuffers(0, _countof(buffers), buffers, strides,
                                     offsets);
         context->IASetIndexBuffer(m_indices.Get(), m_indexFormat, 0);
+    }
+
+    void Draw(const ComPtr<ID3D11DeviceContext> &context, UINT drawCount, UINT drawOffset)
+    {
         // context->DrawIndexedInstanced(drawCount, 1, drawOffset, 0, 0);
         context->DrawIndexed(drawCount, drawOffset, 0);
     }
@@ -247,21 +248,117 @@ public:
 };
 using ShaderPtr = std::shared_ptr<Shader>;
 
+template <typename T>
+class ConstantBuffer
+{
+    ComPtr<ID3D11Buffer> m_buffer;
+    T m_data = {};
+    static const size_t SIZE = sizeof(T);
+
+public:
+    static std::shared_ptr<ConstantBuffer> Create(const ComPtr<ID3D11Device> &device)
+    {
+        auto constantBuffer = std::shared_ptr<ConstantBuffer>(new ConstantBuffer);
+
+        D3D11_BUFFER_DESC desc = {
+            desc.ByteWidth = SIZE,
+            desc.Usage = D3D11_USAGE_DYNAMIC,
+            desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+        };
+        if (FAILED(device->CreateBuffer(&desc, nullptr, &constantBuffer->m_buffer)))
+        {
+            return nullptr;
+        }
+
+        return constantBuffer;
+    }
+
+    T *Data()
+    {
+        return &m_data;
+    }
+
+    ComPtr<ID3D11Buffer> Buffer() const
+    {
+        return m_buffer;
+    }
+
+    bool Upload(const ComPtr<ID3D11DeviceContext> &context)
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        if (FAILED(context->Map(m_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+        {
+            return false;
+        }
+
+        assert(mapped.DepthPitch==SIZE);
+        memcpy(mapped.pData, &m_data, SIZE);
+
+        context->Unmap(m_buffer.Get(), 0);
+        return true;
+    }
+};
+template <typename T>
+using ConstantBufferPtr = std::shared_ptr<ConstantBuffer<T>>;
+
+struct DrawConstantBuffer
+{
+    XMFLOAT4X4 World;
+    XMFLOAT4 Color;
+};
+
+struct Submesh
+{
+    UINT Count = 0;
+    UINT Offset = 0;
+    ShaderPtr Shader;
+    ConstantBufferPtr<DrawConstantBuffer> ConstantBuffer;
+
+    ID3D11Buffer *ConstantBufferPtr() const
+    {
+        if (!ConstantBuffer)
+        {
+            return nullptr;
+        }
+        return ConstantBuffer->Buffer().Get();
+    }
+};
+using SubmeshPtr = std::shared_ptr<Submesh>;
+
 class Drawable
 {
     VertexBufferPtr m_mesh;
-    ShaderPtr m_shader;
+    std::vector<SubmeshPtr> m_submeshes;
 
 public:
-    Drawable(const VertexBufferPtr &mesh, const ShaderPtr &shader)
-        : m_mesh(mesh), m_shader(shader)
+    Drawable(const VertexBufferPtr &mesh)
+        : m_mesh(mesh)
     {
     }
 
-    void Draw(const ComPtr<ID3D11DeviceContext> &context)
+    SubmeshPtr AddSubmesh(const ComPtr<ID3D11Device> &device)
     {
-        m_shader->Setup(context);
-        m_mesh->Draw(context);
+        auto submesh = std::make_shared<Submesh>();
+        submesh->ConstantBuffer = ConstantBuffer<DrawConstantBuffer>::Create(device);
+        m_submeshes.push_back(submesh);
+        return submesh;
+    }
+
+    void
+    Draw(const ComPtr<ID3D11DeviceContext> &context, const ComPtr<ID3D11Buffer> &sceneConstantBuffer = nullptr)
+    {
+        m_mesh->Setup(context);
+        for (auto &submesh : m_submeshes)
+        {
+            submesh->Shader->Setup(context);
+            ID3D11Buffer *buffers[] = {
+                sceneConstantBuffer.Get(),
+                submesh->ConstantBufferPtr(),
+            };
+            context->VSSetConstantBuffers(0, _countof(buffers), buffers);
+            m_mesh->Draw(context, submesh->Count, submesh->Offset);
+        }
     }
 };
 using DrawablePtr = std::shared_ptr<Drawable>;
