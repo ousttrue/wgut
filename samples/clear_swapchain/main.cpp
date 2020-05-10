@@ -1,5 +1,5 @@
 #include <wgut/Win32Window.h>
-#include <wgut/graphics/dx11.h>
+#include <wgut/graphics/wgut_d3d11.h>
 #include <stdexcept>
 
 int main(int argc, char **argv)
@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     wgut::ScreenState state;
     while (window.TryGetState(&state))
     {
-        rt.Update(device, state);
+        rt.UpdateViewport(device, state.Width, state.Height);
         rt.ClearAndSet(context, clearColor);
         swapchain->Present(1, 0);
 
