@@ -112,6 +112,15 @@ public:
                   const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
                   const gsl::span<const T> &vertices)
     {
+        // DXGI_FORMAT Format;
+        // UINT AlignedByteOffset;
+        int stride = 0;
+        for (auto &element : layout)
+        {
+            stride += wgut::shader::Stride(element.Format);
+        }
+        assert(stride == sizeof(T));
+
         if (FAILED(device->CreateInputLayout(
                 (const D3D11_INPUT_ELEMENT_DESC *)layout.data(), static_cast<UINT>(layout.size()),
                 vsByteCode->GetBufferPointer(), vsByteCode->GetBufferSize(),

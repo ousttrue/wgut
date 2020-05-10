@@ -48,5 +48,16 @@
             "environment": [],
             "externalConsole": false
         },
+        {
+            "name": "texture_cube",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "build/samples/texture_cube/texture_cube.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }

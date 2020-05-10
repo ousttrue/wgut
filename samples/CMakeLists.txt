@@ -3,4 +3,5 @@ subdirs(
     clear_swapchain
     draw_triangle
     draw_cube
+    texture_cube
     )

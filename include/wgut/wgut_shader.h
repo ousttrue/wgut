@@ -166,4 +166,18 @@ public:
     }
 };
 
+UINT Stride(DXGI_FORMAT format)
+{
+    switch (format)
+    {
+    case DXGI_FORMAT_R32G32_FLOAT:
+        return 8;
+        
+    case DXGI_FORMAT_R32G32B32_FLOAT:
+        return 12;
+    }
+
+    throw std::runtime_error("unknown format");
+}
+
 } // namespace wgut::shader
