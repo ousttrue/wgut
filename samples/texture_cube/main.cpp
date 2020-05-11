@@ -2,6 +2,7 @@
 #include <wgut/wgut_d3d11.h>
 #include <wgut/wgut_shader.h>
 #include <wgut/OrbitCamera.h>
+#include <wgut/MeshBuilder.h>
 #include <stdexcept>
 #include <iostream>
 #include <DirectXMath.h>
@@ -60,7 +61,8 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
         throw std::runtime_error("fail to compile ps");
     }
 
-    // create vertex buffer
+    wgut::MeshBuilder builder(inputLayout);
+
     struct float2
     {
         float x;
@@ -72,35 +74,43 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
         float y;
         float z;
     };
-    struct Vertex
-    {
-        float3 position;
-        float2 uv;
-    };
-    static_assert(sizeof(Vertex) == 20);
-    // counter clockwise ?
-    Vertex vertices[] = {
-        {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f}},
-        {{1.0f, -1.0f, -1.0f}, {1.0f, 1.0f}},
-        {{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f}},
-        {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f}},
-        {{-1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}},
-        {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}},
-        {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-        {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-    };
-    uint16_t indices[] = {
-        0, 1, 2, 2, 3, 0, // z-
-        1, 5, 6, 6, 2, 1, // x+
-        5, 4, 7, 7, 6, 5, // z+
-        4, 0, 3, 3, 7, 4, // x-
-        3, 2, 6, 6, 7, 3, // y+
-        0, 4, 5, 5, 1, 0, // y-
+
+    float3 positions[] = {
+        {-1.0f, -1.0f, -1.0f},
+        {1.0f, -1.0f, -1.0f},
+        {1.0f, 1.0f, -1.0f},
+        {-1.0f, 1.0f, -1.0f},
+        {-1.0f, -1.0f, 1.0f},
+        {1.0f, -1.0f, 1.0f},
+        {1.0f, 1.0f, 1.0f},
+        {-1.0f, 1.0f, 1.0f},
     };
 
+    float2 uv[] = {
+        {0.0f, 1.0f},
+        {1.0f, 1.0f},
+        {1.0f, 0.0f},
+        {0.0f, 0.0f},
+    };
+
+    // builder.PushQuad(
+    //     positions[0], uv[0],
+    //     positions[1], uv[1],
+    //     positions[2], uv[2],
+    //     positions[3], uv[3]);
+
+    // uint16_t indices[] = {
+    //     0, 1, 2, 2, 3, 0, // z-
+    //     1, 5, 6, 6, 2, 1, // x+
+    //     5, 4, 7, 7, 6, 5, // z+
+    //     4, 0, 3, 3, 7, 4, // x-
+    //     3, 2, 6, 6, 7, 3, // y+
+    //     0, 4, 5, 5, 1, 0, // y-
+    // };
+
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    // mesh->Vertices<Vertex>(device, vs.ByteCode, inputLayout->Elements(), vertices);
-    // mesh->Indices(device, indices);
+    // mesh->Vertices(device, vs.ByteCode, inputLayout->Elements(), builder.Vertices());
+    // mesh->Indices(device, builder.Indices());
 
     // create shader
     auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);

@@ -107,19 +107,19 @@ class VertexBuffer
     UINT m_indexCount = 0;
 
 public:
-    template <typename T>
+    // template <typename T>
     bool Vertices(const ComPtr<ID3D11Device> &device,
                   const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
-                  const gsl::span<const T> &vertices)
+                  const void *vertices, UINT count, UINT stride)
     {
         // DXGI_FORMAT Format;
         // UINT AlignedByteOffset;
-        int stride = 0;
+        int layoutStride = 0;
         for (auto &element : layout)
         {
-            stride += wgut::shader::Stride(element.Format);
+            layoutStride += wgut::shader::Stride(element.Format);
         }
-        assert(stride == sizeof(T));
+        assert(layoutStride == stride);
 
         if (FAILED(device->CreateInputLayout(
                 (const D3D11_INPUT_ELEMENT_DESC *)layout.data(), static_cast<UINT>(layout.size()),
@@ -129,9 +129,9 @@ public:
             return false;
         }
 
-        m_stride = sizeof(T);
+        m_stride = stride;
         D3D11_BUFFER_DESC desc{
-            .ByteWidth = static_cast<UINT>(vertices.size_bytes()),
+            .ByteWidth = count * stride,
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = D3D11_BIND_VERTEX_BUFFER,
             .CPUAccessFlags = 0,
@@ -139,9 +139,9 @@ public:
             .StructureByteStride = 0,
         };
         D3D11_SUBRESOURCE_DATA data{
-            .pSysMem = vertices.data(),
-            .SysMemPitch = sizeof(T),
-            .SysMemSlicePitch = static_cast<UINT>(vertices.size_bytes()),
+            .pSysMem = vertices,
+            .SysMemPitch = stride,
+            .SysMemSlicePitch = count * stride,
         };
         if (FAILED(device->CreateBuffer(&desc, &data, &m_vertices)))
         {
@@ -189,16 +189,6 @@ public:
         }
 
         return true;
-    }
-
-    bool Indices(const ComPtr<ID3D11Device> &device, const gsl::span<uint16_t> &span)
-    {
-        return Indices(device, span.data(), static_cast<UINT>(span.size()), 2);
-    }
-
-    void Indices(const ComPtr<ID3D11Device> &device, const gsl::span<uint32_t> &span)
-    {
-        throw std::runtime_error("not implemented");
     }
 
     void Setup(const ComPtr<ID3D11DeviceContext> &context)

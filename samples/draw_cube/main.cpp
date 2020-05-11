@@ -84,8 +84,8 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
         0, 4, 5, 5, 1, 0, // y-
     };
     auto mesh = std::make_shared<wgut::d3d11::VertexBuffer>();
-    mesh->Vertices<float3>(device, vs.ByteCode, inputLayout->Elements(), vertices);
-    mesh->Indices(device, indices);
+    mesh->Vertices(device, vs.ByteCode, inputLayout->Elements(), vertices, _countof(vertices), sizeof(float3));
+    mesh->Indices(device, indices, _countof(indices), 2);
 
     // create shader
     auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);

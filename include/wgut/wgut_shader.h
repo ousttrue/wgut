@@ -165,6 +165,7 @@ public:
         return m_layout;
     }
 };
+using InputLayoutPtr = std::shared_ptr<InputLayout>;
 
 UINT Stride(DXGI_FORMAT format)
 {
@@ -172,7 +173,7 @@ UINT Stride(DXGI_FORMAT format)
     {
     case DXGI_FORMAT_R32G32_FLOAT:
         return 8;
-        
+
     case DXGI_FORMAT_R32G32B32_FLOAT:
         return 12;
     }

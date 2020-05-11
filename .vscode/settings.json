@@ -6,6 +6,7 @@
         "wgut"
     ],
     "files.associations": {
-        "stdexcept": "cpp"
+        "stdexcept": "cpp",
+        "span": "cpp"
     }
 }
