@@ -107,7 +107,14 @@ class VertexBuffer
     UINT m_indexCount = 0;
 
 public:
-    // template <typename T>
+    template <typename T>
+    bool Vertices(const ComPtr<ID3D11Device> &device,
+                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
+                  const gsl::span<const T> &vertices)
+    {
+        return Vertices(device, vsByteCode, layout, vertices.data(), static_cast<UINT>(vertices.size()), sizeof(T));
+    }
+
     bool Vertices(const ComPtr<ID3D11Device> &device,
                   const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
                   const void *vertices, UINT count, UINT stride)
@@ -149,6 +156,12 @@ public:
         }
 
         return true;
+    }
+
+    template <typename T>
+    bool Indices(const ComPtr<ID3D11Device> &device, const gsl::span<const T> &indices)
+    {
+        return Indices(device, indices.data(), static_cast<UINT>(indices.size()), sizeof(T));
     }
 
     bool Indices(const ComPtr<ID3D11Device> &device, const void *p, UINT count, UINT stride)

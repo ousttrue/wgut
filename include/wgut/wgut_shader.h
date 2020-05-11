@@ -69,6 +69,20 @@ struct InputLayoutElement
     INPUT_CLASSIFICATION InputSlotClass;
     UINT InstanceDataStepRate;
 };
+inline UINT Stride(DXGI_FORMAT format)
+{
+    switch (format)
+    {
+    case DXGI_FORMAT_R32G32_FLOAT:
+        return 8;
+
+    case DXGI_FORMAT_R32G32B32_FLOAT:
+        return 12;
+    }
+
+    throw std::runtime_error("unknown format");
+}
+
 class InputLayout
 {
     // keep semantic strings
@@ -164,21 +178,17 @@ public:
     {
         return m_layout;
     }
+
+    UINT Stride() const
+    {
+        UINT stride = 0;
+        for (auto &element : m_layout)
+        {
+            stride += ::wgut::shader::Stride(element.Format);
+        }
+        return stride;
+    }
 };
 using InputLayoutPtr = std::shared_ptr<InputLayout>;
-
-UINT Stride(DXGI_FORMAT format)
-{
-    switch (format)
-    {
-    case DXGI_FORMAT_R32G32_FLOAT:
-        return 8;
-
-    case DXGI_FORMAT_R32G32B32_FLOAT:
-        return 12;
-    }
-
-    throw std::runtime_error("unknown format");
-}
 
 } // namespace wgut::shader
