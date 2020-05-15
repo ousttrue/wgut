@@ -4,4 +4,5 @@ subdirs(
     draw_triangle
     draw_cube
     texture_cube
+    d2d
     )

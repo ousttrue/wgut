@@ -1,4 +1,5 @@
 {
+    "C_Cpp.clang_format_style": "file",
     "cSpell.words": [
         "IDXGI",
         "dxgi",
@@ -7,6 +8,7 @@
     ],
     "files.associations": {
         "stdexcept": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "memory": "cpp"
     }
 }

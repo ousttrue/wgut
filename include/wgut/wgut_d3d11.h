@@ -378,4 +378,27 @@ public:
 };
 using DrawablePtr = std::shared_ptr<Drawable>;
 
+inline ComPtr<ID3D11Texture2D> CreateTexture(const ComPtr<ID3D11Device> &device, UINT width, UINT height)
+{
+    D3D11_TEXTURE2D_DESC desc{
+        .Width = width,
+        .Height = height,
+        .MipLevels = 1, // <-
+        .ArraySize = 1,
+        .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+        .SampleDesc = {1, 0},
+        .Usage = D3D11_USAGE_DEFAULT,
+        .BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+        .CPUAccessFlags = 0,
+        .MiscFlags = 0,
+    };
+    ComPtr<ID3D11Texture2D> texture;
+    if (FAILED(device->CreateTexture2D(&desc, nullptr, &texture)))
+    {
+        return nullptr;
+    }
+
+    return texture;
+}
+
 } // namespace wgut::d3d11

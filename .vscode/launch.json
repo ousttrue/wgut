@@ -59,5 +59,16 @@
             "environment": [],
             "externalConsole": false
         },
+        {
+            "name": "d2d",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "build/samples/d2d/d2d.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }
