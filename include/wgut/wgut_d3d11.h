@@ -184,7 +184,7 @@ public:
 
     bool Indices(const ComPtr<ID3D11Device> &device, UINT stride, const gsl::span<const uint8_t> &indices)
     {
-        m_indexCount = static_cast<UINT>(indices.size());
+        m_indexCount = static_cast<UINT>(indices.size() / stride);
 
         switch (stride)
         {
