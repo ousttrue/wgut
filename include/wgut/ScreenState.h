@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <bitset>
+#include <chrono>
 
 namespace wgut
 {
@@ -22,8 +23,13 @@ struct ScreenState
     int16_t Height;
     int16_t MouseX;
     int16_t MouseY;
-    float ElapsedSeconds;
-    float DeltaSeconds;
+    std::chrono::system_clock::duration Elapsed;
+    std::chrono::system_clock::duration Delta;
+    float DeltaSeconds() const
+    {
+        return std::chrono::duration_cast<std::chrono::duration<float>>(Delta).count();        
+    }
+
     MouseButtonFlags MouseFlag;
     std::bitset<128> KeyCode = {};
 
@@ -32,9 +38,18 @@ struct ScreenState
         return (MouseFlag & flag) != 0;
     }
 
-    bool MouseLeftDown() const { return Has(MouseButtonFlags::LeftDown); }
-    bool MouseRightDown() const { return Has(MouseButtonFlags::RightDown); }
-    bool MouseMiddleDown() const { return Has(MouseButtonFlags::MiddleDown); }
+    bool MouseLeftDown() const
+    {
+        return Has(MouseButtonFlags::LeftDown);
+    }
+    bool MouseRightDown() const
+    {
+        return Has(MouseButtonFlags::RightDown);
+    }
+    bool MouseMiddleDown() const
+    {
+        return Has(MouseButtonFlags::MiddleDown);
+    }
     int MouseWheel() const
     {
         if (Has(MouseButtonFlags::WheelPlus))
@@ -86,6 +101,6 @@ struct ScreenState
     }
 };
 static_assert(sizeof(ScreenState::KeyCode) == 16, "KeyCode bytes");
-static_assert(sizeof(ScreenState) == 40, "sizeof(WindowMouseState)");
+static_assert(sizeof(ScreenState) == 48, "sizeof(WindowMouseState)");
 
-} // namespace screenstate
+} // namespace wgut

@@ -24,8 +24,10 @@ namespace wgut
 Win32Window::Win32Window(const wchar_t *className)
     : m_className(className), m_hInstance(GetModuleHandle(NULL))
 {
-    QueryPerformanceFrequency(&m_freq);
-    m_freqInv = 1.0 / m_freq.QuadPart;
+    // QueryPerformanceFrequency(&m_freq);
+    // m_freqInv = 1.0 / m_freq.QuadPart;
+    m_startTime = std::chrono::system_clock::now();
+    m_lastTime = m_startTime;
 }
 
 Win32Window::~Win32Window()
@@ -241,33 +243,13 @@ bool Win32Window::TryGetState(ScreenState *pState)
         return false;
     }
 
-    LARGE_INTEGER now;
-    QueryPerformanceCounter(&now);
-    if (m_startTime.QuadPart)
-    {
-        now.QuadPart -= m_startTime.QuadPart;
-    }
-    else
-    {
-        m_startTime.QuadPart = now.QuadPart;
-        now.QuadPart = 0;
-    }
-    if (now.QuadPart > m_lastTime.QuadPart)
-    {
-        m_state.ElapsedSeconds = now.QuadPart * m_freqInv;
-        auto delta = now.QuadPart - m_lastTime.QuadPart;
-        m_state.DeltaSeconds = delta * m_freqInv;
-    }
-    else
-    {
-        // work around
-        m_state.DeltaSeconds = 0.016f;
-        m_state.ElapsedSeconds = 0.016f;
-    }
+    auto now = std::chrono::system_clock::now();
+    m_state.Elapsed = now - m_startTime;
+    m_state.Delta = now - m_lastTime;
     m_lastTime = now;
 
     *pState = m_state;
     m_state.Clear();
     return true;
 }
-} // namespace screenstate
+} // namespace wgut

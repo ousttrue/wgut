@@ -4,7 +4,7 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 
 ## TODO
 
-* [ ] std::chrono clock.
+* [x] std::chrono clock.
 
 ## samples
 

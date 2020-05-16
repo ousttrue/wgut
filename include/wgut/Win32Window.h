@@ -14,11 +14,12 @@ class Win32Window
     HINSTANCE m_hInstance;
     bool m_enableSetCursor = true;
 
-    LARGE_INTEGER m_freq;
-    float m_freqInv;
-    LARGE_INTEGER m_lastTime{};
-    LARGE_INTEGER m_startTime{};
-
+    // LARGE_INTEGER m_freq;
+    // float m_freqInv;
+    // LARGE_INTEGER m_lastTime{};
+    // LARGE_INTEGER m_startTime{};
+    std::chrono::system_clock::time_point m_lastTime;
+    std::chrono::system_clock::time_point m_startTime;
 public:
     Win32Window(const wchar_t *className);
     ~Win32Window();
