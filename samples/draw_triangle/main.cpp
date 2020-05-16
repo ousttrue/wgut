@@ -51,14 +51,14 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
     uint16_t indices[] = {
         0, 1, 2};
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->Vertices(device, vs.ByteCode, inputLayout->Elements(), vertices, _countof(vertices), sizeof(float2));
-    vb->Indices(device, indices, _countof(indices), 2);
+    vb->Vertices(device, vs.ByteCode, inputLayout->Elements(), vertices);
+    vb->Indices(device, indices);
 
     // create shader
     auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
     auto submesh = drawable->AddSubmesh();
     submesh->Offset = 0;
-    submesh->Count = 3;
+    submesh->Count = vb->IndexCount();
     submesh->Shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
 
     return drawable;

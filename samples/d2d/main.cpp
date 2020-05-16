@@ -69,81 +69,15 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
     auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
 
     // create cube
-    struct float2
-    {
-        float x;
-        float y;
-    };
-    struct float3
-    {
-        float x;
-        float y;
-        float z;
-    };
-    struct Vertex
-    {
-        float3 position;
-        float2 uv;
-    };
-
-    float3 positions[] = {
-        {-1.0f, -1.0f, -1.0f},
-        {1.0f, -1.0f, -1.0f},
-        {1.0f, 1.0f, -1.0f},
-        {-1.0f, 1.0f, -1.0f},
-        {-1.0f, -1.0f, 1.0f},
-        {1.0f, -1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f},
-        {-1.0f, 1.0f, 1.0f},
-    };
-
-    float2 uv[] = {
-        {0.0f, 1.0f},
-        {1.0f, 1.0f},
-        {1.0f, 0.0f},
-        {0.0f, 0.0f},
-    };
-
-    wgut::MeshBuilder<Vertex> builder;
-    builder.PushQuad(
-        Vertex{positions[0], uv[0]},
-        Vertex{positions[1], uv[1]},
-        Vertex{positions[2], uv[2]},
-        Vertex{positions[3], uv[3]});
-    builder.PushQuad(
-        Vertex{positions[1], uv[0]},
-        Vertex{positions[5], uv[1]},
-        Vertex{positions[6], uv[2]},
-        Vertex{positions[2], uv[3]});
-    builder.PushQuad(
-        Vertex{positions[5], uv[0]},
-        Vertex{positions[4], uv[1]},
-        Vertex{positions[7], uv[2]},
-        Vertex{positions[6], uv[3]});
-    builder.PushQuad(
-        Vertex{positions[4], uv[0]},
-        Vertex{positions[0], uv[1]},
-        Vertex{positions[3], uv[2]},
-        Vertex{positions[7], uv[3]});
-    builder.PushQuad(
-        Vertex{positions[3], uv[0]},
-        Vertex{positions[2], uv[1]},
-        Vertex{positions[6], uv[2]},
-        Vertex{positions[7], uv[3]});
-    builder.PushQuad(
-        Vertex{positions[0], uv[0]},
-        Vertex{positions[4], uv[1]},
-        Vertex{positions[5], uv[2]},
-        Vertex{positions[1], uv[3]});
+    auto builder = wgut::Cube::Create();
 
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->Vertices<Vertex>(device, vs.ByteCode, inputLayout->Elements(), builder.Vertices);
-    vb->Indices<uint16_t>(device, builder.Indices);
+    vb->MeshData(device, vs.ByteCode, inputLayout->Elements(), builder);
 
     // drawable
     auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
     auto &submesh = drawable->AddSubmesh();
-    submesh->Count = static_cast<UINT>(builder.Indices.size());
+    submesh->Count = vb->IndexCount();
     submesh->Shader = shader;
 
     return drawable;

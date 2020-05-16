@@ -2,8 +2,10 @@
 #include "wgut_common.h"
 #include "wgut_dxgi.h"
 #include "wgut_shader.h"
+#include "MeshBuilder.h"
 #include <gsl/span>
 #include <directXMath.h>
+#include <assert.h>
 
 namespace wgut::d3d11
 {
@@ -97,6 +99,17 @@ public:
     }
 };
 
+template <typename T, size_t N>
+static gsl::span<const uint8_t> byte_span(const T (&a)[N])
+{
+    return gsl::span<const uint8_t>((const uint8_t *)a, sizeof(T) * N);
+}
+template <typename T>
+static gsl::span<const uint8_t> byte_span(const std::vector<T> &v)
+{
+    return gsl::span<const uint8_t>((const uint8_t *)v.data(), sizeof(T) * v.size());
+}
+
 class VertexBuffer
 {
     ComPtr<ID3D11InputLayout> m_layout;
@@ -110,23 +123,23 @@ public:
     template <typename T>
     bool Vertices(const ComPtr<ID3D11Device> &device,
                   const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
-                  const gsl::span<const T> &vertices)
+                  const T &vertices)
     {
-        return Vertices(device, vsByteCode, layout, vertices.data(), static_cast<UINT>(vertices.size()), sizeof(T));
+        return Vertices(device, vsByteCode, layout, byte_span(vertices));
     }
 
     bool Vertices(const ComPtr<ID3D11Device> &device,
                   const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
-                  const void *vertices, UINT count, UINT stride)
+                  const gsl::span<const uint8_t> &vertices)
     {
         // DXGI_FORMAT Format;
         // UINT AlignedByteOffset;
-        int layoutStride = 0;
+        UINT stride = 0;
         for (auto &element : layout)
         {
-            layoutStride += wgut::shader::Stride(element.Format);
+            stride += wgut::shader::Stride(element.Format);
         }
-        assert(layoutStride == stride);
+        // assert(layoutStride == stride);
 
         if (FAILED(device->CreateInputLayout(
                 (const D3D11_INPUT_ELEMENT_DESC *)layout.data(), static_cast<UINT>(layout.size()),
@@ -138,7 +151,7 @@ public:
 
         m_stride = stride;
         D3D11_BUFFER_DESC desc{
-            .ByteWidth = count * stride,
+            .ByteWidth = static_cast<UINT>(vertices.size_bytes()),
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = D3D11_BIND_VERTEX_BUFFER,
             .CPUAccessFlags = 0,
@@ -146,9 +159,9 @@ public:
             .StructureByteStride = 0,
         };
         D3D11_SUBRESOURCE_DATA data{
-            .pSysMem = vertices,
+            .pSysMem = vertices.data(),
             .SysMemPitch = stride,
-            .SysMemSlicePitch = count * stride,
+            .SysMemSlicePitch = static_cast<UINT>(vertices.size_bytes()),
         };
         if (FAILED(device->CreateBuffer(&desc, &data, &m_vertices)))
         {
@@ -158,15 +171,20 @@ public:
         return true;
     }
 
-    template <typename T>
-    bool Indices(const ComPtr<ID3D11Device> &device, const gsl::span<const T> &indices)
+    UINT IndexCount() const
     {
-        return Indices(device, indices.data(), static_cast<UINT>(indices.size()), sizeof(T));
+        return m_indexCount;
     }
 
-    bool Indices(const ComPtr<ID3D11Device> &device, const void *p, UINT count, UINT stride)
+    template <typename T>
+    bool Indices(const ComPtr<ID3D11Device> &device, const T &indices)
     {
-        m_indexCount = count;
+        return Indices(device, sizeof(indices[0]), byte_span(indices));
+    }
+
+    bool Indices(const ComPtr<ID3D11Device> &device, UINT stride, const gsl::span<const uint8_t> &indices)
+    {
+        m_indexCount = static_cast<UINT>(indices.size());
 
         switch (stride)
         {
@@ -182,9 +200,8 @@ public:
             return false;
         }
 
-        UINT byteWidth = count * stride;
         D3D11_BUFFER_DESC desc{
-            .ByteWidth = byteWidth,
+            .ByteWidth = static_cast<UINT>(indices.size_bytes()),
             .Usage = D3D11_USAGE_DEFAULT,
             .BindFlags = D3D11_BIND_INDEX_BUFFER,
             .CPUAccessFlags = 0,
@@ -192,9 +209,9 @@ public:
             .StructureByteStride = 0,
         };
         D3D11_SUBRESOURCE_DATA data{
-            .pSysMem = p,
+            .pSysMem = indices.data(),
             .SysMemPitch = stride,
-            .SysMemSlicePitch = byteWidth,
+            .SysMemSlicePitch = static_cast<UINT>(indices.size_bytes()),
         };
         if (FAILED(device->CreateBuffer(&desc, &data, &m_indices)))
         {
@@ -202,6 +219,19 @@ public:
         }
 
         return true;
+    }
+
+    void MeshData(const ComPtr<ID3D11Device> &device,
+                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout, const MeshBuilder &data)
+    {
+        UINT stride = 0;
+        for (auto &element : layout)
+        {
+            stride += wgut::shader::Stride(element.Format);
+        }
+        assert(stride == data.VertexStride);
+        Vertices(device, vsByteCode, layout, data.VerticesData);
+        Indices(device, data.IndexStride, data.IndicesData);
     }
 
     void Setup(const ComPtr<ID3D11DeviceContext> &context)

@@ -9,6 +9,15 @@
     "files.associations": {
         "stdexcept": "cpp",
         "span": "cpp",
-        "memory": "cpp"
+        "memory": "cpp",
+        "array": "cpp",
+        "bitset": "cpp",
+        "initializer_list": "cpp",
+        "list": "cpp",
+        "type_traits": "cpp",
+        "vector": "cpp",
+        "xhash": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
     }
 }
