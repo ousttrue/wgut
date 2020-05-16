@@ -5,4 +5,5 @@ subdirs(
     draw_cube
     texture_cube
     d2d
+    imgui_simple
     )

@@ -70,5 +70,16 @@
             "environment": [],
             "externalConsole": false
         },
+        {
+            "name": "imgui_simple",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "build/samples/imgui_simple/imgui_simple.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }

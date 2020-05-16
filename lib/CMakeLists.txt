@@ -1,6 +1,7 @@
 set(TARGET_NAME wgut)
 add_library(${TARGET_NAME}
     ${CMAKE_CURRENT_LIST_DIR}/../src/Win32Window.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../src/ImGuiImplScreenState.cpp
     )
 set_property(TARGET ${TARGET_NAME}
 PROPERTY 
@@ -17,4 +18,5 @@ PUBLIC
     d3dcompiler
     d2d1
     gsl
+    imgui
     )

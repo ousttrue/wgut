@@ -2,8 +2,12 @@
     "C_Cpp.clang_format_style": "file",
     "cSpell.words": [
         "IDXGI",
+        "chrono",
         "dxgi",
         "hwnd",
+        "imgui",
+        "submesh",
+        "swapchain",
         "wgut"
     ],
     "files.associations": {

@@ -4,7 +4,7 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 
 ## TODO
 
-* [ ] clock.
+* [ ] std::chrono clock.
 
 ## samples
 
@@ -28,10 +28,18 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 
 * depth buffer, submesh material
 
-### TODO: texture_cube
+### texture_cube
+
+* uv
+
+### d2d
+
+* texture_cube and d2d texture write.
 
 ### TODO: cube_map
 
-### TODO: imgui
+### imgui
+
+* imgui
 
 ### TODO: imgui with render target
