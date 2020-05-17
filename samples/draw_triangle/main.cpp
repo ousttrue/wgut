@@ -16,27 +16,10 @@ float4 psMain(float4 position: SV_POSITION): SV_TARGET
 }
 )";
 
-static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D11Device> &device)
+static wgut::d3d11::VertexBufferPtr CreateVertexBuffer(
+    const Microsoft::WRL::ComPtr<ID3D11Device> &device, 
+    const std::shared_ptr<wgut::shader::Compiled> &compiled)
 {
-    // compile shader
-    auto vs = wgut::shader::CompileVS(SHADER, "vsMain");
-    if (!vs.ByteCode)
-    {
-        std::cerr << vs.error_str() << std::endl;
-        throw std::runtime_error("fail to compile vs");
-    }
-    auto inputLayout = wgut::shader::InputLayout::Create(vs.ByteCode);
-    if (!inputLayout)
-    {
-        throw std::runtime_error("fail to ReflectInputLayout");
-    }
-    auto ps = wgut::shader::CompilePS(SHADER, "psMain");
-    if (!ps.ByteCode)
-    {
-        std::cerr << ps.error_str() << std::endl;
-        throw std::runtime_error("fail to compile ps");
-    }
-
     // create vertex buffer
     struct float2
     {
@@ -51,17 +34,9 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
     uint16_t indices[] = {
         0, 1, 2};
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->Vertices(device, vs.ByteCode, inputLayout->Elements(), vertices);
+    vb->Vertices(device, compiled->VS, compiled->InputLayout->Elements(), vertices);
     vb->Indices(device, indices);
-
-    // create shader
-    auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
-    auto submesh = drawable->AddSubmesh();
-    submesh->Offset = 0;
-    submesh->Count = vb->IndexCount();
-    submesh->Shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
-
-    return drawable;
+    return vb;
 }
 
 int main(int argc, char **argv)
@@ -88,7 +63,17 @@ int main(int argc, char **argv)
         throw std::runtime_error("fail to create swapchain");
     }
 
-    auto drawable = CreateDrawable(device);
+    // compile shader
+    auto [compiled, error] = wgut::shader::Compile(
+        SHADER, "vsMain",
+        SHADER, "psMain");
+    if (!compiled)
+    {
+        throw std::runtime_error(error);
+    }
+    auto shader = wgut::d3d11::Shader::Create(device, compiled->VS, compiled->PS);
+
+    auto vb = CreateVertexBuffer(device, compiled);
 
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
     wgut::d3d11::SwapChainRenderTarget rt(swapchain);
@@ -98,7 +83,8 @@ int main(int argc, char **argv)
         rt.UpdateViewport(device, state.Width, state.Height);
         rt.ClearAndSet(context, clearColor);
 
-        drawable->Draw(context);
+        shader->Setup(context);
+        vb->Draw(context);
 
         swapchain->Present(1, 0);
 

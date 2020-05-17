@@ -254,6 +254,7 @@ public:
 
     void Draw(const ComPtr<ID3D11DeviceContext> &context)
     {
+        Setup(context);
         context->DrawIndexed(m_indexCount, 0, 0);
     }
 };

@@ -8,7 +8,7 @@
 namespace wgut::shader
 {
 
-struct Compiled
+struct CompileResult
 {
     ComPtr<ID3DBlob> ByteCode;
     ComPtr<ID3DBlob> Error;
@@ -25,9 +25,9 @@ struct Compiled
     }
 };
 
-inline Compiled Compile(const std::string_view &source, const char *name,
-                        const char *entryPoint, const char *target,
-                        const D3D_SHADER_MACRO *define, ID3DInclude *include)
+inline CompileResult Compile(const std::string_view &source, const char *name,
+                             const char *entryPoint, const char *target,
+                             const D3D_SHADER_MACRO *define, ID3DInclude *include)
 {
     // Create the pipeline state, which includes compiling and loading shaders.
 #if defined(_DEBUG)
@@ -37,19 +37,19 @@ inline Compiled Compile(const std::string_view &source, const char *name,
     UINT compileFlags = 0;
 #endif
 
-    Compiled compiled;
+    CompileResult compiled;
     D3DCompile(source.data(), source.size(), name,
                define, include,
                entryPoint, target, compileFlags, 0, &compiled.ByteCode, &compiled.Error);
     return compiled;
 }
 
-inline Compiled CompileVS(const std::string_view &source, const char *entryPoint)
+inline CompileResult CompileVS(const std::string_view &source, const char *entryPoint)
 {
     return Compile(source, "vs", entryPoint, "vs_5_0", nullptr, nullptr);
 }
 
-inline Compiled CompilePS(const std::string_view &source, const char *entryPoint)
+inline CompileResult CompilePS(const std::string_view &source, const char *entryPoint)
 {
     return Compile(source, "ps", entryPoint, "ps_5_0", nullptr, nullptr);
 }
@@ -190,5 +190,42 @@ public:
     }
 };
 using InputLayoutPtr = std::shared_ptr<InputLayout>;
+
+struct Compiled
+{
+    ComPtr<ID3DBlob> VS;
+    InputLayoutPtr InputLayout;
+    ComPtr<ID3DBlob> PS;
+};
+
+inline std::pair<std::shared_ptr<Compiled>, std::string> Compile(
+    const std::string_view &vsSource, const char *vsEntryPoint,
+    const std::string_view &psSource, const char *psEntryPoint)
+{
+    // compile shader
+    auto vs = wgut::shader::CompileVS(vsSource, vsEntryPoint);
+    if (!vs.ByteCode)
+    {
+        auto error = vs.error_str();
+        return std::make_pair(nullptr, error);
+    }
+    auto inputLayout = wgut::shader::InputLayout::Create(vs.ByteCode);
+    if (!inputLayout)
+    {
+        return std::make_pair(nullptr, "fail to ReflectInputLayout");
+    }
+    auto ps = wgut::shader::CompilePS(psSource, psEntryPoint);
+    if (!ps.ByteCode)
+    {
+        auto error = ps.error_str();
+        return std::make_pair(nullptr, error);
+    }
+
+    auto compiled = std::make_shared<Compiled>();
+    compiled->VS = vs.ByteCode;
+    compiled->InputLayout = inputLayout;
+    compiled->PS = ps.ByteCode;
+    return std::make_pair(compiled, "");
+}
 
 } // namespace wgut::shader
