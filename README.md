@@ -5,6 +5,7 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 ## TODO
 
 * [x] std::chrono clock.
+* [ ] Win32Window calc framerate
 
 ## samples
 
