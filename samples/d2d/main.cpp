@@ -45,44 +45,9 @@ float4 psMain(PS input): SV_TARGET
 }
 )";
 
-static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D11Device> &device)
-{
-    // compile shader
-    auto vs = wgut::shader::CompileVS(SHADER, "vsMain");
-    if (!vs.ByteCode)
-    {
-        std::cerr << vs.error_str() << std::endl;
-        throw std::runtime_error("fail to compile vs");
-    }
-    auto inputLayout = wgut::shader::InputLayout::Create(vs.ByteCode);
-    if (!inputLayout)
-    {
-        throw std::runtime_error("fail to ReflectInputLayout");
-    }
-    auto ps = wgut::shader::CompilePS(SHADER, "psMain");
-    if (!ps.ByteCode)
-    {
-        std::cerr << ps.error_str() << std::endl;
-        throw std::runtime_error("fail to compile ps");
-    }
-    // create shader
-    auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
-
-    // create cube
-    auto builder = wgut::Cube::Create();
-
-    auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->MeshData(device, vs.ByteCode, inputLayout->Elements(), builder);
-
-    // drawable
-    auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
-    auto &submesh = drawable->AddSubmesh();
-    submesh->Count = vb->IndexCount();
-    submesh->Shader = shader;
-
-    return drawable;
-}
-
+///
+/// create texture and write shape by d2d
+///
 template <typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 std::pair<ComPtr<ID3D11Texture2D>, ComPtr<ID3D11ShaderResourceView>> CreateTexture(const ComPtr<ID3D11Device> &device)
@@ -134,6 +99,7 @@ std::pair<ComPtr<ID3D11Texture2D>, ComPtr<ID3D11ShaderResourceView>> CreateTextu
 
 int main(int argc, char **argv)
 {
+    // window
     wgut::Win32Window window(L"CLASS_NAME");
     auto hwnd = window.Create(WINDOW_NAME);
     if (!hwnd)
@@ -142,6 +108,7 @@ int main(int argc, char **argv)
     }
     window.Show();
 
+    // device
     auto device = wgut::d3d11::CreateDeviceForHardwareAdapter();
     if (!device)
     {
@@ -150,23 +117,37 @@ int main(int argc, char **argv)
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
     device->GetImmediateContext(&context);
 
+    // swapchain
     auto swapchain = wgut::dxgi::CreateSwapChain(device, hwnd);
     if (!swapchain)
     {
         throw std::runtime_error("fail to create swapchain");
     }
+    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
 
-    auto drawable = CreateDrawable(device);
+    // compile shader
+    auto [compiled, error] = wgut::shader::Compile(SHADER, "vsMain", SHADER, "psMain");
+    if (!compiled)
+    {
+        std::cerr << error << std::endl;
+        throw std::runtime_error(error);
+    }
+    auto shader = wgut::d3d11::Shader::Create(device, compiled->VS, compiled->PS);
 
+    // create cube
+    auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
+    vb->MeshData(device, compiled->VS, compiled->InputLayout->Elements(), wgut::mesh::Cube::Create());
+
+    // camera
     auto camera = std::make_shared<wgut::OrbitCamera>(wgut::PerspectiveTypes::D3D);
     struct SceneConstantBuffer
     {
         std::array<float, 16> View;
         std::array<float, 16> Projection;
     };
-
     auto b0 = wgut::d3d11::ConstantBuffer<SceneConstantBuffer>::Create(device);
 
+    // texture
     auto [texture, srv] = CreateTexture(device);
     ComPtr<ID3D11SamplerState> sampler;
     D3D11_SAMPLER_DESC samplerDesc{
@@ -183,8 +164,8 @@ int main(int argc, char **argv)
     };
     device->CreateSamplerState(&samplerDesc, &sampler);
 
+    // main loop
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
-    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
     wgut::ScreenState state;
     while (window.TryGetState(&state))
     {
@@ -209,7 +190,11 @@ int main(int argc, char **argv)
         };
         context->PSSetSamplers(0, _countof(samplers), samplers);
 
-        drawable->Draw(context, b0->Buffer());
+        ID3D11Buffer *constants[] = {
+            b0->Buffer().Get(),
+        };
+        shader->Setup(context, constants);
+        vb->Draw(context);
 
         swapchain->Present(1, 0);
 

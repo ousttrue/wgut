@@ -125,6 +125,11 @@ class VertexBuffer
     UINT m_indexCount = 0;
 
 public:
+    static std::shared_ptr<VertexBuffer> Create()
+    {
+        return std::make_shared<VertexBuffer>();
+    }
+
     template <typename T>
     bool Vertices(const ComPtr<ID3D11Device> &device,
                   const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
@@ -227,7 +232,7 @@ public:
     }
 
     void MeshData(const ComPtr<ID3D11Device> &device,
-                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout, const MeshBuilder &data)
+                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout, const mesh::MeshBuilder &data)
     {
         UINT stride = 0;
         for (auto &element : layout)
@@ -291,6 +296,14 @@ public:
     {
         context->VSSetShader(m_vs.Get(), nullptr, 0);
         context->PSSetShader(m_ps.Get(), nullptr, 0);
+    }
+
+    void Setup(const ComPtr<ID3D11DeviceContext> &context, const gsl::span<ID3D11Buffer *> &constants)
+    {
+        context->VSSetShader(m_vs.Get(), nullptr, 0);
+        context->VSSetConstantBuffers(0, static_cast<UINT>(constants.size()), constants.data());
+        context->PSSetShader(m_ps.Get(), nullptr, 0);
+        context->PSSetConstantBuffers(0, static_cast<UINT>(constants.size()), constants.data());
     }
 };
 using ShaderPtr = std::shared_ptr<Shader>;
@@ -373,12 +386,9 @@ struct Submesh
 
     void Draw(const ComPtr<ID3D11DeviceContext> &context, const ComPtr<ID3D11Buffer> &sceneConstantBuffer)
     {
-        Shader->Setup(context);
-        ID3D11Buffer *buffers[] = {
-            sceneConstantBuffer.Get(),
-            ConstantBufferPtr(),
-        };
-        context->VSSetConstantBuffers(0, _countof(buffers), buffers);
+        ID3D11Buffer *array[] = {
+            sceneConstantBuffer.Get(), ConstantBufferPtr()};
+        Shader->Setup(context, array);
         context->DrawIndexed(Count, Offset, 0);
     }
 };

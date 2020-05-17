@@ -64,10 +64,8 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
     auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
 
     // create cube
-    auto builder = wgut::Cube::Create();
-
-    auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->MeshData(device, vs.ByteCode, inputLayout->Elements(), builder);
+    auto vb = wgut::d3d11::VertexBuffer::Create();
+    vb->MeshData(device, vs.ByteCode, inputLayout->Elements(), wgut::mesh::Cube::Create());
 
     // drawable
     auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);

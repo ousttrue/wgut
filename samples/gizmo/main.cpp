@@ -127,13 +127,10 @@ static void Draw(const ComPtr<ID3D11DeviceContext> &context,
                  const ComPtr<ID3D11Buffer> &b0,
                  const wgut::d3d11::VertexBufferPtr &vb)
 {
-    shader->Setup(context);
-    ID3D11Buffer *buffers[] = {
+    ID3D11Buffer *constants[] = {
         b0.Get(),
-        // b1.Get(),
     };
-    context->VSSetConstantBuffers(0, _countof(buffers), buffers);
-    context->CSSetConstantBuffers(0, _countof(buffers), buffers);
+    shader->Setup(context, constants);
     vb->Draw(context);
 }
 
