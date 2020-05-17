@@ -135,7 +135,7 @@ std::pair<ComPtr<ID3D11Texture2D>, ComPtr<ID3D11ShaderResourceView>> CreateTextu
 int main(int argc, char **argv)
 {
     wgut::Win32Window window(L"CLASS_NAME");
-    auto hwnd = window.Create(L"WINDOW_NAME");
+    auto hwnd = window.Create(WINDOW_NAME);
     if (!hwnd)
     {
         throw std::runtime_error("fail to create window");

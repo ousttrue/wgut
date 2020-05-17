@@ -5,7 +5,7 @@
 int main(int argc, char **argv)
 {
     wgut::Win32Window window(L"CLASS_NAME");
-    auto hwnd = window.Create(L"WINDOW_NAME");
+    auto hwnd = window.Create(WINDOW_NAME);
     if (!hwnd)
     {
         throw std::runtime_error("fail to create window");

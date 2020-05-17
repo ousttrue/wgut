@@ -1,5 +1,6 @@
 #pragma once
 #include "ScreenState.h"
+#include "wgut_string.h"
 #include <Windows.h>
 #include <string>
 #include <functional>
@@ -20,16 +21,25 @@ class Win32Window
     // LARGE_INTEGER m_startTime{};
     std::chrono::system_clock::time_point m_lastTime;
     std::chrono::system_clock::time_point m_startTime;
+
 public:
     Win32Window(const wchar_t *className);
     ~Win32Window();
+    HWND Create(const char *titleName, int width = 0, int height = 0)
+    {
+        return Create(CP932ToUnicode(titleName).c_str(), width, height);
+    }
+
     HWND Create(const wchar_t *titleName, int width = 0, int height = 0);
     void Show(int nCmdShow = SW_SHOW);
     bool TryGetState(ScreenState *pState);
-    void SetEnableSetCursor(bool enable) { m_enableSetCursor = enable; }
+    void SetEnableSetCursor(bool enable)
+    {
+        m_enableSetCursor = enable;
+    }
     std::function<void()> OnDestroy;
 
 private:
     static LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 };
-} // namespace screenstate
+} // namespace wgut

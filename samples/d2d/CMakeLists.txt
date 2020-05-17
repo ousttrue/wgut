@@ -7,6 +7,10 @@ set_property(TARGET ${TARGET_NAME}
 PROPERTY 
     CXX_STANDARD 20
     )
+target_compile_definitions(${TARGET_NAME}
+PRIVATE
+    WINDOW_NAME="${TARGET_NAME}"
+    )
 target_link_libraries(${TARGET_NAME}
 PRIVATE
     wgut
