@@ -6,4 +6,5 @@ subdirs(
     texture_cube
     d2d
     imgui_simple
+    gizmo
     )

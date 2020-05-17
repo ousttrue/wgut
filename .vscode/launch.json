@@ -81,5 +81,16 @@
             "environment": [],
             "externalConsole": false
         },
+        {
+            "name": "gizmo",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "build/samples/gizmo/gizmo.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }

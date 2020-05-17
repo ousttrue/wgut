@@ -1,7 +1,12 @@
 set(TARGET_NAME wgut)
 add_library(${TARGET_NAME}
-    ${CMAKE_CURRENT_LIST_DIR}/../src/Win32Window.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/../src/ImGuiImplScreenState.cpp
+    Win32Window.cpp
+    ImGuiImplScreenState.cpp
+    gizmo.cpp
+    gizmo_translation.cpp
+    gizmo_rotation.cpp
+    gizmo_scale.cpp
+    geometry_mesh.cpp
     )
 set_property(TARGET ${TARGET_NAME}
 PROPERTY 

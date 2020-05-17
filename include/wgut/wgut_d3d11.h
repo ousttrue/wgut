@@ -252,10 +252,9 @@ public:
         context->IASetIndexBuffer(m_indices.Get(), m_indexFormat, 0);
     }
 
-    void Draw(const ComPtr<ID3D11DeviceContext> &context, UINT drawCount, UINT drawOffset)
+    void Draw(const ComPtr<ID3D11DeviceContext> &context)
     {
-        // context->DrawIndexedInstanced(drawCount, 1, drawOffset, 0, 0);
-        context->DrawIndexed(drawCount, drawOffset, 0);
+        context->DrawIndexed(m_indexCount, 0, 0);
     }
 };
 using VertexBufferPtr = std::shared_ptr<VertexBuffer>;
@@ -402,7 +401,7 @@ public:
                 submesh->ConstantBufferPtr(),
             };
             context->VSSetConstantBuffers(0, _countof(buffers), buffers);
-            m_mesh->Draw(context, submesh->Count, submesh->Offset);
+            context->DrawIndexed(submesh->Count, submesh->Offset, 0);
         }
     }
 };
