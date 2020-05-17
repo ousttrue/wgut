@@ -3,6 +3,7 @@
 #include <wgut/wgut_shader.h>
 #include <wgut/OrbitCamera.h>
 #include <wgut/wgut_gizmo.h>
+#include <wgut/Grid.h>
 #include <stdexcept>
 #include <iostream>
 #include <DirectXMath.h>
@@ -192,6 +193,9 @@ int main(int argc, char **argv)
     auto gizmoShader = wgut::d3d11::Shader::Create(device, gizmoCompiled->VS, gizmoCompiled->PS);
     auto gizmoVertexBuffer = std::make_shared<wgut::d3d11::VertexBuffer>();
 
+    // grid
+    auto grid = wgut::d3d11::Grid::Create(device);
+
     // main loop
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
     wgut::ScreenState state;
@@ -200,6 +204,8 @@ int main(int argc, char **argv)
     {
         // update camera
         camera->Update(state);
+        grid->Update(state, camera->state);
+
         auto &cameraState = camera->state;
         auto viewProjection = cameraState.view * cameraState.projection;
         auto gizmoCB = b0->Payload();
@@ -272,6 +278,7 @@ int main(int argc, char **argv)
         cubeShader->Setup(context, constants);
         cubeVertexBuffer->Draw(context);
         gizmoShader->Setup(context, constants);
+        grid->Draw(context);
         gizmoVertexBuffer->Draw(context);
 
         swapchain->Present(1, 0);

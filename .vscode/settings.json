@@ -1,7 +1,10 @@
 {
     "C_Cpp.clang_format_style": "file",
     "cSpell.words": [
+        "FOVY",
         "IDXGI",
+        "TEXCOORD",
+        "cbuffer",
         "chrono",
         "dxgi",
         "hwnd",

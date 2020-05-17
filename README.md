@@ -6,6 +6,9 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 
 * [x] std::chrono clock.
 * [ ] Win32Window calc framerate
+* [ ] DepthBuffer
+* [ ] AlphaBlend
+* [ ] material => shader + constant buffer + (SRV, sampler) + depth state + blend state
 
 ## samples
 
@@ -45,6 +48,10 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 
 ### TODO: imgui with render target
 
+### grid
+
+* infinite grid by screen effect
+
 ### gizmo
 
 based https://github.com/ddiakopoulos/tinygizmo .
@@ -53,10 +60,10 @@ based https://github.com/ddiakopoulos/tinygizmo .
 * [ ] hover
 * [ ] alpha blend
 
-### grid
+### TODO: teapot
 
-* infinite grid by screen effect
+### TODO: label
 
-### label
+* nanovg
 
 ### ComputeShader
