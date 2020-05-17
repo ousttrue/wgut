@@ -78,6 +78,9 @@ inline UINT Stride(DXGI_FORMAT format)
 
     case DXGI_FORMAT_R32G32B32_FLOAT:
         return 12;
+
+    case DXGI_FORMAT_R32G32B32A32_FLOAT:
+        return 16;
     }
 
     throw std::runtime_error("unknown format");
@@ -197,6 +200,7 @@ struct Compiled
     InputLayoutPtr InputLayout;
     ComPtr<ID3DBlob> PS;
 };
+using CompiledPtr = std::shared_ptr<Compiled>;
 
 inline std::pair<std::shared_ptr<Compiled>, std::string> Compile(
     const std::string_view &vsSource, const char *vsEntryPoint,

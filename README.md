@@ -44,3 +44,11 @@ Window and Graphics UTility for d3d. This is d3d thin wrapper. helper toolkit.
 * imgui
 
 ### TODO: imgui with render target
+
+### gizmo
+
+based https://github.com/ddiakopoulos/tinygizmo .
+
+* [ ] screen space size
+* [ ] hover
+* [ ] alpha blend

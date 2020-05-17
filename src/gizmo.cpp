@@ -41,13 +41,17 @@ void GizmoSystem::begin(
 GizmoSystem::Buffer GizmoSystem::end()
 {
     auto &r = m_impl->render();
+    // return {
+    //     (uint8_t *)r.vertices.data(),
+    //     static_cast<uint32_t>(r.vertices.size() * sizeof(r.vertices[0])),
+    //     static_cast<uint32_t>(sizeof(r.vertices[0])),
+    //     (uint8_t *)r.triangles.data(),
+    //     static_cast<uint32_t>(r.triangles.size() * sizeof(r.triangles[0])),
+    //     static_cast<uint32_t>(sizeof(r.triangles[0])),
+    // };
     return {
-        (uint8_t *)r.vertices.data(),
-        static_cast<uint32_t>(r.vertices.size() * sizeof(r.vertices[0])),
-        static_cast<uint32_t>(sizeof(r.vertices[0])),
-        (uint8_t *)r.triangles.data(),
-        static_cast<uint32_t>(r.triangles.size() * sizeof(r.triangles[0])),
-        static_cast<uint32_t>(sizeof(r.triangles[0])),
+        .Vertices = gsl::span<const Vertex>((const Vertex *)r.vertices.data(), r.vertices.size()),
+        .Indices = r.triangles,
     };
 }
 

@@ -7,6 +7,18 @@
 #include <iostream>
 #include <DirectXMath.h>
 
+template <typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
+
+struct GizmoConstantBuffer
+{
+    std::array<float, 16> model;
+    std::array<float, 16> viewProjection;
+    std::array<float, 3> eye;
+    float padding;
+};
+static_assert(sizeof(GizmoConstantBuffer) == sizeof(float) * (16 * 2 + 4));
+
 auto SHADER = R"(
 struct VS
 {
@@ -18,16 +30,17 @@ struct PS
     float4 position: SV_POSITION;
 };
 
-cbuffer SceneConstantBuffer : register(b0)
+cbuffer cbContextData : register(b0)
 {
-    float4x4 View;
-    float4x4 Projection;
+    float4x4 uModel;
+    float4x4 uViewProj;
+    float3 uEye;
 };
 
 PS vsMain(VS input)
 {
     PS output;
-    output.position = mul(mul(Projection, View), float4(input.position, 1));
+    output.position = mul(uViewProj, mul(uModel, float4(input.position, 1)));
 	return output;
 }
 
@@ -37,27 +50,46 @@ float4 psMain(PS input): SV_TARGET
 }
 )";
 
-static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D11Device> &device)
-{
-    // compile shader
-    auto vs = wgut::shader::CompileVS(SHADER, "vsMain");
-    if (!vs.ByteCode)
+constexpr const char gizmo_shader[] = R"(
+    struct VS_INPUT
+	{
+		float3 position : POSITION;
+        float3 normal   : NORMAL;
+		float4 color    : COLOR0;
+	};
+    struct VS_OUTPUT
     {
-        std::cerr << vs.error_str() << std::endl;
-        throw std::runtime_error("fail to compile vs");
-    }
-    auto inputLayout = wgut::shader::InputLayout::Create(vs.ByteCode);
-    if (!inputLayout)
+        linear float4 position: SV_POSITION;
+        linear float3 normal  : NORMAL;
+        linear float4 color   : COLOR0;
+        linear float3 world   : POSITION;
+    };    
+	cbuffer cbContextData : register(b0)
+	{
+		float4x4 uModel;
+		float4x4 uViewProj;
+        float3 uEye;
+	};
+    
+    VS_OUTPUT vsMain(VS_INPUT _in) 
     {
-        throw std::runtime_error("fail to ReflectInputLayout");
-    }
-    auto ps = wgut::shader::CompilePS(SHADER, "psMain");
-    if (!ps.ByteCode)
-    {
-        std::cerr << ps.error_str() << std::endl;
-        throw std::runtime_error("fail to compile ps");
+        VS_OUTPUT ret;
+        ret.world = _in.position;
+        ret.position = mul(uViewProj, float4(ret.world, 1));
+        ret.normal = _in.normal;
+        ret.color = _in.color;
+        return ret;
     }
 
+	float4 psMain(VS_OUTPUT _in): SV_Target
+    {
+        float3 light = float3(1, 1, 1) * max(dot(_in.normal, normalize(uEye - _in.world)), 0.50) + 0.25;
+        return _in.color * float4(light, 1);
+    }
+)";
+
+static auto CreateCube(const Microsoft::WRL::ComPtr<ID3D11Device> &device, const wgut::shader::CompiledPtr &compiled)
+{
     // create vertex buffer
     struct float3
     {
@@ -85,18 +117,24 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
         0, 4, 5, 5, 1, 0, // y-
     };
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->Vertices(device, vs.ByteCode, inputLayout->Elements(), vertices);
+    vb->Vertices(device, compiled->VS, compiled->InputLayout->Elements(), vertices);
     vb->Indices(device, indices);
+    return vb;
+}
 
-    // create shader
-    auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
-
-    auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
-    auto &submesh = drawable->AddSubmesh();
-    submesh->Count = vb->IndexCount();
-    submesh->Shader = shader;
-
-    return drawable;
+static void Draw(const ComPtr<ID3D11DeviceContext> &context,
+                 const wgut::d3d11::ShaderPtr &shader,
+                 const ComPtr<ID3D11Buffer> &b0,
+                 const wgut::d3d11::VertexBufferPtr &vb)
+{
+    shader->Setup(context);
+    ID3D11Buffer *buffers[] = {
+        b0.Get(),
+        // b1.Get(),
+    };
+    context->VSSetConstantBuffers(0, _countof(buffers), buffers);
+    context->CSSetConstantBuffers(0, _countof(buffers), buffers);
+    vb->Draw(context);
 }
 
 int main(int argc, char **argv)
@@ -122,8 +160,21 @@ int main(int argc, char **argv)
     {
         throw std::runtime_error("fail to create swapchain");
     }
+    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
 
-    auto drawable = CreateDrawable(device);
+    // cube
+    auto [cubeCompiled, cubeError] = wgut::shader::Compile(
+        SHADER, "vsMain",
+        SHADER, "psMain");
+    if (!cubeCompiled)
+    {
+        std::cerr << cubeError << std::endl;
+        throw std::runtime_error(cubeError);
+    }
+    auto cubeShader = wgut::d3d11::Shader::Create(device, cubeCompiled->VS, cubeCompiled->PS);
+    auto cubeVertexBuffer = CreateCube(device, cubeCompiled);
+    falg::TRS cubeTransform = {};
+    cubeTransform.translation = {-2, 0, 0};
 
     auto camera = std::make_shared<wgut::OrbitCamera>(wgut::PerspectiveTypes::D3D);
     struct SceneConstantBuffer
@@ -132,13 +183,9 @@ int main(int argc, char **argv)
         std::array<float, 16> Projection;
     };
 
-    auto b0 = wgut::d3d11::ConstantBuffer<SceneConstantBuffer>::Create(device);
+    auto b0 = wgut::d3d11::ConstantBuffer<GizmoConstantBuffer>::Create(device);
 
-    // teapot a
-    falg::TRS teapot_a;
-    teapot_a.translation = {-2, 0, 0};
-
-
+    // gizmo
     wgut::gizmo::GizmoSystem gizmo;
     enum class transform_mode
     {
@@ -146,25 +193,35 @@ int main(int argc, char **argv)
         rotate,
         scale
     };
-    auto mode = transform_mode::scale;
+    auto mode = transform_mode::translate;
     bool is_local = true;
+    // gizmo mesh
+    auto [gizmoCompiled, gizmoError] = wgut::shader::Compile(
+        gizmo_shader, "vsMain",
+        gizmo_shader, "psMain");
+    if (!gizmoCompiled)
+    {
+        std::cerr << gizmoError << std::endl;
+        throw std::runtime_error(gizmoError);
+    }
+    auto gizmoShader = wgut::d3d11::Shader::Create(device, gizmoCompiled->VS, gizmoCompiled->PS);
+    auto gizmoVertexBuffer = std::make_shared<wgut::d3d11::VertexBuffer>();
 
+    // main loop
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
-    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
     wgut::ScreenState state;
+    std::bitset<128> lastState{};
     while (window.TryGetState(&state))
     {
-        {
-            // update camera
-            camera->Update(state);
-            auto sceneData = b0->Data();
-            sceneData->Projection = camera->state.projection;
-            sceneData->View = camera->state.view;
-            b0->Upload(context);
-        }
+        // update camera
+        camera->Update(state);
+        auto &cameraState = camera->state;
+        auto viewProjection = cameraState.view * cameraState.projection;
+        auto gizmoCB = b0->Payload();
+        gizmoCB->viewProjection = viewProjection;
+        gizmoCB->eye = camera->state.position;
 
         // gizmo new frame
-        auto &cameraState = camera->state;
         gizmo.begin(
             cameraState.position,
             cameraState.rotation,
@@ -172,7 +229,23 @@ int main(int argc, char **argv)
             cameraState.ray_direction,
             state.MouseLeftDown());
 
-        auto viewProjection = cameraState.view * cameraState.projection;
+        if (state.KeyCode['R'])
+        {
+            mode = transform_mode::rotate;
+        }
+        if (state.KeyCode['T'])
+        {
+            mode = transform_mode::translate;
+        }
+        if (state.KeyCode['S'])
+        {
+            mode = transform_mode::scale;
+        }
+        if (!lastState['Z'] && state.KeyCode['Z'])
+        {
+            is_local = !is_local;
+        }
+        lastState = state.KeyCode;
 
         {
             //
@@ -182,31 +255,34 @@ int main(int argc, char **argv)
             {
             case transform_mode::translate:
                 wgut::gizmo::handle::translation(gizmo, wgut::gizmo::hash_fnv1a("first-example-gizmo"), is_local,
-                                             nullptr, teapot_a.translation, teapot_a.rotation);
+                                                 nullptr, cubeTransform.translation, cubeTransform.rotation);
                 break;
 
             case transform_mode::rotate:
                 wgut::gizmo::handle::rotation(gizmo, wgut::gizmo::hash_fnv1a("first-example-gizmo"), is_local,
-                                          nullptr, teapot_a.translation, teapot_a.rotation);
+                                              nullptr, cubeTransform.translation, cubeTransform.rotation);
                 break;
 
             case transform_mode::scale:
                 wgut::gizmo::handle::scale(gizmo, wgut::gizmo::hash_fnv1a("first-example-gizmo"), is_local,
-                                       teapot_a.translation, teapot_a.rotation, teapot_a.scale);
+                                           cubeTransform.translation, cubeTransform.rotation, cubeTransform.scale);
                 break;
             }
 
             auto buffer = gizmo.end();
-            // gizmo_mesh->uploadMesh(device,
-            //                        buffer.pVertices, buffer.verticesBytes, buffer.vertexStride,
-            //                        buffer.pIndices, buffer.indicesBytes, buffer.indexStride,
-            //                        true);
+            gizmoVertexBuffer->Vertices(device, gizmoCompiled->VS, gizmoCompiled->InputLayout->Elements(), buffer.Vertices);
+            gizmoVertexBuffer->Indices(device, buffer.Indices);
         }
 
+        // update
         rt.UpdateViewport(device, state.Width, state.Height);
-        rt.ClearAndSet(context, clearColor);
+        b0->Payload()->model = cubeTransform.RowMatrix();
+        b0->Upload(context);
 
-        drawable->Draw(context, b0->Buffer());
+        // draw
+        rt.ClearAndSet(context, clearColor);
+        Draw(context, cubeShader, b0->Buffer(), cubeVertexBuffer);
+        Draw(context, gizmoShader, b0->Buffer(), gizmoVertexBuffer);
 
         swapchain->Present(1, 0);
 

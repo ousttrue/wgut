@@ -2,9 +2,17 @@
 #include <string>
 #include <array>
 #include <stdint.h>
+#include <gsl/span>
 
 namespace wgut::gizmo
 {
+
+struct Vertex
+{
+    std::array<float, 3> position;
+    std::array<float, 3> normal;
+    std::array<float, 4> color;
+};
 
 struct GizmoSystem
 {
@@ -23,12 +31,14 @@ struct GizmoSystem
 
     struct Buffer
     {
-        uint8_t *pVertices;
-        uint32_t verticesBytes;
-        uint32_t vertexStride;
-        uint8_t *pIndices;
-        uint32_t indicesBytes;
-        uint32_t indexStride;
+        // uint8_t *pVertices;
+        // uint32_t verticesBytes;
+        // uint32_t vertexStride;
+        // uint8_t *pIndices;
+        // uint32_t indicesBytes;
+        // uint32_t indexStride;
+        gsl::span<const Vertex> Vertices;
+        gsl::span<const uint32_t> Indices;
     };
     Buffer end();
 };

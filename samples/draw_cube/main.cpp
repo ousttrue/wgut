@@ -141,7 +141,7 @@ int main(int argc, char **argv)
         {
             // update camera
             camera->Update(state);
-            auto sceneData = b0->Data();
+            auto sceneData = b0->Payload();
             sceneData->Projection = camera->state.projection;
             sceneData->View = camera->state.view;
             b0->Upload(context);

@@ -109,6 +109,11 @@ static gsl::span<const uint8_t> byte_span(const std::vector<T> &v)
 {
     return gsl::span<const uint8_t>((const uint8_t *)v.data(), sizeof(T) * v.size());
 }
+template <typename T>
+static gsl::span<const uint8_t> byte_span(const gsl::span<const T> &v)
+{
+    return gsl::span<const uint8_t>((const uint8_t *)v.data(), v.size_bytes());
+}
 
 class VertexBuffer
 {
@@ -316,7 +321,7 @@ public:
         return constantBuffer;
     }
 
-    T *Data()
+    T *Payload()
     {
         return &m_data;
     }
@@ -346,8 +351,8 @@ using ConstantBufferPtr = std::shared_ptr<ConstantBuffer<T>>;
 
 struct DrawConstantBuffer
 {
-    XMFLOAT4X4 World;
-    XMFLOAT4 Color;
+    std::array<float, 16> World;
+    std::array<float, 4> Color;
 };
 
 struct Submesh
@@ -364,6 +369,17 @@ struct Submesh
             return nullptr;
         }
         return ConstantBuffer->Buffer().Get();
+    }
+
+    void Draw(const ComPtr<ID3D11DeviceContext> &context, const ComPtr<ID3D11Buffer> &sceneConstantBuffer)
+    {
+        Shader->Setup(context);
+        ID3D11Buffer *buffers[] = {
+            sceneConstantBuffer.Get(),
+            ConstantBufferPtr(),
+        };
+        context->VSSetConstantBuffers(0, _countof(buffers), buffers);
+        context->DrawIndexed(Count, Offset, 0);
     }
 };
 using SubmeshPtr = std::shared_ptr<Submesh>;
@@ -396,13 +412,7 @@ public:
         m_mesh->Setup(context);
         for (auto &submesh : m_submeshes)
         {
-            submesh->Shader->Setup(context);
-            ID3D11Buffer *buffers[] = {
-                sceneConstantBuffer.Get(),
-                submesh->ConstantBufferPtr(),
-            };
-            context->VSSetConstantBuffers(0, _countof(buffers), buffers);
-            context->DrawIndexed(submesh->Count, submesh->Offset, 0);
+            submesh->Draw(context, sceneConstantBuffer);
         }
     }
 };
