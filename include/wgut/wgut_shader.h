@@ -88,11 +88,37 @@ inline UINT Stride(DXGI_FORMAT format)
 
 class InputLayout
 {
-    // keep semantic strings
-    std::vector<std::string> m_semantics;
     std::vector<InputLayoutElement> m_layout;
 
 public:
+    static const char *POSITION;
+    static const char *NORMAL;
+    static const char *COLOR;
+    static const char *TEXCOORD;
+
+    static const char *GetSemanticConstant(const std::string_view semantic)
+    {
+        if (semantic == POSITION)
+        {
+            return POSITION;
+        }
+        if (semantic == NORMAL)
+        {
+            return NORMAL;
+        }
+        if (semantic == COLOR)
+        {
+            return COLOR;
+        }
+        if (semantic == TEXCOORD)
+        {
+            return TEXCOORD;
+        }
+
+        throw new std::runtime_error("not found");
+        return nullptr;
+    }
+
     static std::shared_ptr<InputLayout> Create(const ComPtr<ID3DBlob> vsByteCode)
     {
         ComPtr<ID3D11ShaderReflection> pReflection;
@@ -114,15 +140,15 @@ public:
 
         D3D11_SHADER_DESC desc;
         pReflection->GetDesc(&desc);
-        layout->m_semantics.reserve(desc.InputParameters);
         for (unsigned i = 0; i < desc.InputParameters; ++i)
         {
             D3D11_SIGNATURE_PARAMETER_DESC lParamDesc;
             pReflection->GetInputParameterDesc(i, &lParamDesc);
 
-            layout->m_semantics.push_back(lParamDesc.SemanticName);
+            auto semantic = GetSemanticConstant(lParamDesc.SemanticName);
+
             InputLayoutElement lElementDesc{
-                .SemanticName = layout->m_semantics.back().c_str(),
+                .SemanticName = semantic,
                 .SemanticIndex = lParamDesc.SemanticIndex,
                 .InputSlot = 0,
                 .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
@@ -192,6 +218,10 @@ public:
         return stride;
     }
 };
+const char *InputLayout::POSITION = "POSITION";
+const char *InputLayout::NORMAL = "NORMAL";
+const char *InputLayout::COLOR = "COLOR";
+const char *InputLayout::TEXCOORD = "TEXCOORD";
 using InputLayoutPtr = std::shared_ptr<InputLayout>;
 
 struct Compiled
