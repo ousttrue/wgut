@@ -122,18 +122,6 @@ static auto CreateCube(const Microsoft::WRL::ComPtr<ID3D11Device> &device, const
     return vb;
 }
 
-static void Draw(const ComPtr<ID3D11DeviceContext> &context,
-                 const wgut::d3d11::ShaderPtr &shader,
-                 const ComPtr<ID3D11Buffer> &b0,
-                 const wgut::d3d11::VertexBufferPtr &vb)
-{
-    ID3D11Buffer *constants[] = {
-        b0.Get(),
-    };
-    shader->Setup(context, constants);
-    vb->Draw(context);
-}
-
 int main(int argc, char **argv)
 {
     wgut::Win32Window window(L"CLASS_NAME");
@@ -278,8 +266,13 @@ int main(int argc, char **argv)
 
         // draw
         rt.ClearAndSet(context, clearColor);
-        Draw(context, cubeShader, b0->Buffer(), cubeVertexBuffer);
-        Draw(context, gizmoShader, b0->Buffer(), gizmoVertexBuffer);
+        ID3D11Buffer *constants[] = {
+            b0->Ptr(),
+        };
+        cubeShader->Setup(context, constants);
+        cubeVertexBuffer->Draw(context);
+        gizmoShader->Setup(context, constants);
+        gizmoVertexBuffer->Draw(context);
 
         swapchain->Present(1, 0);
 

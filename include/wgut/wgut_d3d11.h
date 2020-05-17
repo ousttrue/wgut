@@ -339,9 +339,14 @@ public:
         return &m_data;
     }
 
-    ComPtr<ID3D11Buffer> Buffer() const
+    ComPtr<ID3D11Buffer> GetComPtr() const
     {
         return m_buffer;
+    }
+
+    ID3D11Buffer *Ptr()
+    {
+        return m_buffer.Get();
     }
 
     bool Upload(const ComPtr<ID3D11DeviceContext> &context)
@@ -381,7 +386,7 @@ struct Submesh
         {
             return nullptr;
         }
-        return ConstantBuffer->Buffer().Get();
+        return ConstantBuffer->Ptr();
     }
 
     void Draw(const ComPtr<ID3D11DeviceContext> &context, const ComPtr<ID3D11Buffer> &sceneConstantBuffer)

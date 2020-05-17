@@ -191,7 +191,7 @@ int main(int argc, char **argv)
         context->PSSetSamplers(0, _countof(samplers), samplers);
 
         ID3D11Buffer *constants[] = {
-            b0->Buffer().Get(),
+            b0->Ptr(),
         };
         shader->Setup(context, constants);
         vb->Draw(context);

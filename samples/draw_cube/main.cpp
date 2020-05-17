@@ -36,26 +36,41 @@ float4 psMain(PS input): SV_TARGET
 }
 )";
 
-static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D11Device> &device)
+int main(int argc, char **argv)
 {
+    // window
+    wgut::Win32Window window(L"CLASS_NAME");
+    auto hwnd = window.Create(WINDOW_NAME);
+    if (!hwnd)
+    {
+        throw std::runtime_error("fail to create window");
+    }
+    window.Show();
+
+    // device
+    auto device = wgut::d3d11::CreateDeviceForHardwareAdapter();
+    if (!device)
+    {
+        throw std::runtime_error("fail to create device");
+    }
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+    device->GetImmediateContext(&context);
+
+    auto swapchain = wgut::dxgi::CreateSwapChain(device, hwnd);
+    if (!swapchain)
+    {
+        throw std::runtime_error("fail to create swapchain");
+    }
+    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
+
     // compile shader
-    auto vs = wgut::shader::CompileVS(SHADER, "vsMain");
-    if (!vs.ByteCode)
+    auto [compiled, error] = wgut::shader::Compile(SHADER, "vsMain", SHADER, "psMain");
+    if (!compiled)
     {
-        std::cerr << vs.error_str() << std::endl;
-        throw std::runtime_error("fail to compile vs");
+        std::cerr << error << std::endl;
+        throw std::runtime_error(error);
     }
-    auto inputLayout = wgut::shader::InputLayout::Create(vs.ByteCode);
-    if (!inputLayout)
-    {
-        throw std::runtime_error("fail to ReflectInputLayout");
-    }
-    auto ps = wgut::shader::CompilePS(SHADER, "psMain");
-    if (!ps.ByteCode)
-    {
-        std::cerr << ps.error_str() << std::endl;
-        throw std::runtime_error("fail to compile ps");
-    }
+    auto shader = wgut::d3d11::Shader::Create(device, compiled->VS, compiled->PS);
 
     // create vertex buffer
     struct float3
@@ -84,57 +99,20 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
         0, 4, 5, 5, 1, 0, // y-
     };
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
-    vb->Vertices(device, vs.ByteCode, inputLayout->Elements(), vertices);
+    vb->Vertices(device, compiled->VS, compiled->InputLayout->Elements(), vertices);
     vb->Indices(device, indices);
 
-    // create shader
-    auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
-
-    auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
-    auto &submesh = drawable->AddSubmesh();
-    submesh->Count = vb->IndexCount();
-    submesh->Shader = shader;
-
-    return drawable;
-}
-
-int main(int argc, char **argv)
-{
-    wgut::Win32Window window(L"CLASS_NAME");
-    auto hwnd = window.Create(WINDOW_NAME);
-    if (!hwnd)
-    {
-        throw std::runtime_error("fail to create window");
-    }
-    window.Show();
-
-    auto device = wgut::d3d11::CreateDeviceForHardwareAdapter();
-    if (!device)
-    {
-        throw std::runtime_error("fail to create device");
-    }
-    Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
-    device->GetImmediateContext(&context);
-
-    auto swapchain = wgut::dxgi::CreateSwapChain(device, hwnd);
-    if (!swapchain)
-    {
-        throw std::runtime_error("fail to create swapchain");
-    }
-
-    auto drawable = CreateDrawable(device);
-
+    // camera
     auto camera = std::make_shared<wgut::OrbitCamera>(wgut::PerspectiveTypes::D3D);
     struct SceneConstantBuffer
     {
         std::array<float, 16> View;
         std::array<float, 16> Projection;
     };
-
     auto b0 = wgut::d3d11::ConstantBuffer<SceneConstantBuffer>::Create(device);
 
+    // main loop
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
-    wgut::d3d11::SwapChainRenderTarget rt(swapchain);
     wgut::ScreenState state;
     while (window.TryGetState(&state))
     {
@@ -147,10 +125,14 @@ int main(int argc, char **argv)
             b0->Upload(context);
         }
 
+        // update
         rt.UpdateViewport(device, state.Width, state.Height);
-        rt.ClearAndSet(context, clearColor);
 
-        drawable->Draw(context, b0->Buffer());
+        // draw
+        rt.ClearAndSet(context, clearColor);
+        ID3D11Buffer *constants[] = {b0->Ptr()};
+        shader->Setup(context, constants);
+        vb->Draw(context);
 
         swapchain->Present(1, 0);
 

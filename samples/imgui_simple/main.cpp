@@ -312,7 +312,7 @@ int main(int argc, char **argv)
         rt.UpdateViewport(device, state.Width, state.Height);
         rt.ClearAndSet(context, &imgui.clear_color.x);
 
-        drawable->Draw(context, b0->Buffer());
+        drawable->Draw(context, b0->GetComPtr());
 
         imgui.Frame(state);
 

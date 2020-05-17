@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-namespace wgut
+namespace wgut::mesh
 {
 
 struct MeshBuilder
@@ -67,6 +67,33 @@ struct MeshBuilder
         AppendIndex(i + 2);
         AppendIndex(i + 3);
         AppendIndex(i);
+    }
+};
+
+struct Quad
+{
+    struct float2
+    {
+        float x;
+        float y;
+    };
+    struct Vertex
+    {
+        float2 position;
+        float2 uv;
+    };
+
+    static MeshBuilder Create()
+    {
+        auto builder = MeshBuilder(sizeof(Vertex), 2);
+        // clock wise
+        builder.PushQuad(
+            Vertex{{-1, 1}, {0, 0}},
+            Vertex{{1, 1}, {1, 0}},
+            Vertex{{1, -1}, {1, 1}},
+            Vertex{{-1, -1}, {0, 1}}
+            );
+        return builder;
     }
 };
 
