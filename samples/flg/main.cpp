@@ -10,7 +10,7 @@ export float4 to_float4(float2 xy)
     return float4(xy, 0, 1);
 }
 
-export float4 white(float4 _)
+export float4 white()
 {
     return float4(1, 1, 1, 1);
 }
@@ -190,6 +190,151 @@ static std::pair<ComPtr<ID3D11Module>, std::string> CompileModule(const std::str
     return {module, ""};
 }
 
+static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ComPtr<ID3D11Module> &module, const ComPtr<ID3D11ModuleInstance> &moduleInstance)
+{
+    // input
+    D3D11_PARAMETER_DESC inParams[] = {
+        {
+            .Name = "input_position",
+            .SemanticName = "POSITION",
+            .Type = D3D_SVT_FLOAT,
+            .Class = D3D_SVC_VECTOR,
+            .Rows = 1,
+            .Columns = 4,
+            .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
+            .Flags = D3D_PF_IN,
+            .FirstInRegister = 0,
+            .FirstInComponent = 0,
+            .FirstOutRegister = 0,
+            .FirstOutComponent = 0,
+        },
+    };
+
+    // output
+    D3D11_PARAMETER_DESC outParams[] =
+        {
+            {
+                .Name = "output_position",
+                .SemanticName = "SV_POSITION",
+                .Type = D3D_SVT_FLOAT,
+                .Class = D3D_SVC_VECTOR,
+                .Rows = 1,
+                .Columns = 4,
+                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
+                .Flags = D3D_PF_OUT,
+                .FirstInRegister = 0,
+                .FirstInComponent = 0,
+                .FirstOutRegister = 0,
+                .FirstOutComponent = 0,
+            },
+        };
+    auto [vsModule, vsError] = BuildGraph(inParams, outParams, module, "to_float4");
+    if (!vsModule)
+    {
+        return {nullptr, vsError};
+    }
+
+    auto [vs, linkError] = Link("vs_5_0", vsModule, moduleInstance);
+    if (!vs)
+    {
+        return {nullptr, linkError};
+    }
+
+    return {vs, ""};
+}
+
+static std::pair<ComPtr<ID3DBlob>, std::string> PS(const ComPtr<ID3D11Module> &module, const ComPtr<ID3D11ModuleInstance> &moduleInstance)
+{
+    // input
+    // D3D11_PARAMETER_DESC inParams[] = {
+    //     {
+    //         .Name = "input_position",
+    //         .SemanticName = "SV_POSITION",
+    //         .Type = D3D_SVT_FLOAT,
+    //         .Class = D3D_SVC_VECTOR,
+    //         .Rows = 1,
+    //         .Columns = 4,
+    //         .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
+    //         .Flags = D3D_PF_IN,
+    //         .FirstInRegister = 0,
+    //         .FirstInComponent = 0,
+    //         .FirstOutRegister = 0,
+    //         .FirstOutComponent = 0,
+    //     },
+    // };
+
+    // output
+    D3D11_PARAMETER_DESC outParams[] =
+        {
+            {
+                .Name = "output_color",
+                .SemanticName = "SV_TARGET",
+                .Type = D3D_SVT_FLOAT,
+                .Class = D3D_SVC_VECTOR,
+                .Rows = 1,
+                .Columns = 4,
+                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
+                .Flags = D3D_PF_OUT,
+                .FirstInRegister = 0,
+                .FirstInComponent = 0,
+                .FirstOutRegister = 0,
+                .FirstOutComponent = 0,
+            },
+        };
+
+    ComPtr<ID3D11FunctionLinkingGraph> flg;
+    if (FAILED(D3DCreateFunctionLinkingGraph(0, &flg)))
+    {
+        return {nullptr, "fail to create flg"};
+    }
+
+    // ComPtr<ID3D11LinkingNode> input;
+    // if (FAILED(flg->SetInputSignature(
+    //         inParams,
+    //         static_cast<UINT>(_countof(inParams)),
+    //         &input)))
+    // {
+    //     return {nullptr, "fail to input signature"};
+    // }
+
+    ComPtr<ID3D11LinkingNode> func;
+    if (FAILED(flg->CallFunction("", module.Get(), "white", &func)))
+    {
+        auto str = GetLastError(flg);
+        return {nullptr, str};
+    }
+
+    ComPtr<ID3D11LinkingNode> output;
+    if (FAILED(flg->SetOutputSignature(
+            outParams,
+            static_cast<UINT>(_countof(outParams)),
+            &output)))
+    {
+        return {nullptr, "fail to output signature"};
+    }
+
+    // func -> out
+    if (FAILED(flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, output.Get(), 0)))
+    {
+        return {nullptr, "fail to func -> out"};
+    }
+
+    // Finalize the vertex shader graph.
+    ComPtr<ID3D11ModuleInstance> flgInstance;
+    if (FAILED(flg->CreateModuleInstance(&flgInstance, nullptr)))
+    {
+        return {nullptr, "create module"};
+    }
+
+    auto [ps, linkError] = Link("ps_5_0", flgInstance, moduleInstance);
+    if (!ps)
+    {
+        return {nullptr, linkError};
+    }
+
+    return {ps, ""};
+}
+
 static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_view &shader)
 {
     // module
@@ -218,52 +363,10 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
     auto compiled = std::make_shared<wgut::shader::Compiled>();
 
     {
-        // input
-        D3D11_PARAMETER_DESC inParams[] = {
-            {
-                .Name = "input_position",
-                .SemanticName = "POSITION",
-                .Type = D3D_SVT_FLOAT,
-                .Class = D3D_SVC_VECTOR,
-                .Rows = 1,
-                .Columns = 4,
-                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-                .Flags = D3D_PF_IN,
-                .FirstInRegister = 0,
-                .FirstInComponent = 0,
-                .FirstOutRegister = 0,
-                .FirstOutComponent = 0,
-            },
-        };
-
-        // output
-        D3D11_PARAMETER_DESC outParams[] =
-            {
-                {
-                    .Name = "output_position",
-                    .SemanticName = "SV_POSITION",
-                    .Type = D3D_SVT_FLOAT,
-                    .Class = D3D_SVC_VECTOR,
-                    .Rows = 1,
-                    .Columns = 4,
-                    .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-                    .Flags = D3D_PF_OUT,
-                    .FirstInRegister = 0,
-                    .FirstInComponent = 0,
-                    .FirstOutRegister = 0,
-                    .FirstOutComponent = 0,
-                },
-            };
-        auto [vsModule, vsError] = BuildGraph(inParams, outParams, module, "to_float4");
-        if (!vsModule)
-        {
-            return {nullptr, vsError};
-        }
-
-        auto [vs, linkError] = Link("vs_5_0", vsModule, moduleInstance);
+        auto [vs, error] = VS(module, moduleInstance);
         if (!vs)
         {
-            return {nullptr, linkError};
+            return {nullptr, error};
         }
         compiled->VS = vs;
 
@@ -276,52 +379,10 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
     }
 
     {
-        // input
-        D3D11_PARAMETER_DESC inParams[] = {
-            {
-                .Name = "input_position",
-                .SemanticName = "SV_POSITION",
-                .Type = D3D_SVT_FLOAT,
-                .Class = D3D_SVC_VECTOR,
-                .Rows = 1,
-                .Columns = 4,
-                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-                .Flags = D3D_PF_IN,
-                .FirstInRegister = 0,
-                .FirstInComponent = 0,
-                .FirstOutRegister = 0,
-                .FirstOutComponent = 0,
-            },
-        };
-
-        // output
-        D3D11_PARAMETER_DESC outParams[] =
-            {
-                {
-                    .Name = "output_color",
-                    .SemanticName = "SV_TARGET",
-                    .Type = D3D_SVT_FLOAT,
-                    .Class = D3D_SVC_VECTOR,
-                    .Rows = 1,
-                    .Columns = 4,
-                    .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-                    .Flags = D3D_PF_OUT,
-                    .FirstInRegister = 0,
-                    .FirstInComponent = 0,
-                    .FirstOutRegister = 0,
-                    .FirstOutComponent = 0,
-                },
-            };
-        auto [psModule, psError] = BuildGraph(inParams, outParams, module, "white");
-        if (!psModule)
-        {
-            return {nullptr, psError};
-        }
-
-        auto [ps, linkError] = Link("ps_5_0", psModule, moduleInstance);
+        auto [ps, error] = PS(module, moduleInstance);
         if (!ps)
         {
-            return {nullptr, linkError};
+            return {nullptr, error};
         }
         compiled->PS = ps;
     }
