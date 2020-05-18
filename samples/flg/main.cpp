@@ -32,16 +32,18 @@ static wgut::d3d11::VertexBufferPtr CreateVertexBuffer(
     const std::shared_ptr<wgut::shader::Compiled> &compiled)
 {
     // create vertex buffer
-    struct float2
+    struct float4
     {
         float x;
         float y;
+        float z;
+        float w;
     };
     // clockwise
-    float2 vertices[] = {
-        {0.5f, -0.5f},
-        {-0.5f, -0.5f},
-        {0.0f, 0.5f}};
+    float4 vertices[] = {
+        {0.5f, -0.5f, 0, 1},
+        {-0.5f, -0.5f, 0, 1},
+        {0.0f, 0.5f, 0, 1}};
     uint16_t indices[] = {
         0, 1, 2};
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
@@ -53,12 +55,28 @@ static wgut::d3d11::VertexBufferPtr CreateVertexBuffer(
 template <typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-static std::pair<ComPtr<ID3DBlob>, std::string> Compile(
-    const std::string_view &target,
+static std::string ToStr(const ComPtr<ID3DBlob> &blob)
+{
+    std::string str;
+    if (blob)
+    {
+        str.resize(blob->GetBufferSize());
+        memcpy(str.data(), blob->GetBufferPointer(), str.size());
+    }
+    return str;
+}
+
+static std::string GetLastError(const ComPtr<ID3D11FunctionLinkingGraph> &flg)
+{
+    ComPtr<ID3DBlob> error;
+    flg->GetLastError(&error);
+    return ToStr(error);
+}
+
+static std::pair<ComPtr<ID3D11ModuleInstance>, std::string> BuildGraph(
     const gsl::span<const D3D11_PARAMETER_DESC> &inParams,
     const gsl::span<const D3D11_PARAMETER_DESC> &outParams,
     const ComPtr<ID3D11Module> &module,
-    const ComPtr<ID3D11ModuleInstance> &shaderLibraryInstance,
     const std::string_view &funcName)
 {
     ComPtr<ID3D11FunctionLinkingGraph> flg;
@@ -76,12 +94,6 @@ static std::pair<ComPtr<ID3DBlob>, std::string> Compile(
         return {nullptr, "fail to input signature"};
     }
 
-    ComPtr<ID3D11LinkingNode> func;
-    if (FAILED(flg->CallFunction("", module.Get(), funcName.data(), &func)))
-    {
-        return {nullptr, "fail to callFunction"};
-    }
-
     ComPtr<ID3D11LinkingNode> output;
     if (FAILED(flg->SetOutputSignature(
             outParams.data(),
@@ -89,6 +101,13 @@ static std::pair<ComPtr<ID3DBlob>, std::string> Compile(
             &output)))
     {
         return {nullptr, "fail to output signature"};
+    }
+
+#if 0
+    ComPtr<ID3D11LinkingNode> func;
+    if (FAILED(flg->CallFunction("", module.Get(), funcName.data(), &func)))
+    {
+        return {nullptr, "fail to callFunction"};
     }
 
     // in -> func
@@ -102,37 +121,40 @@ static std::pair<ComPtr<ID3DBlob>, std::string> Compile(
     {
         return {nullptr, "fail to func -> out"};
     }
+#else
+    // in -> out
+    if (FAILED(flg->PassValue(input.Get(), 0, output.Get(), 0)))
+    {
+        return {nullptr, GetLastError(flg)};
+    }
+#endif
 
     // Finalize the vertex shader graph.
-    ComPtr<ID3D11ModuleInstance> shaderGraphInstance;
-    if (FAILED(flg->CreateModuleInstance(&shaderGraphInstance, nullptr)))
+    ComPtr<ID3D11ModuleInstance> flgInstance;
+    if (FAILED(flg->CreateModuleInstance(&flgInstance, nullptr)))
     {
         return {nullptr, "create module"};
     }
 
+    return {flgInstance, ""};
+}
+
+static std::pair<ComPtr<ID3DBlob>, std::string> Link(
+    const char *target,
+    const ComPtr<ID3D11ModuleInstance> &flgInstance,
+    const ComPtr<ID3D11ModuleInstance> &moduleInstance)
+{
     // Create a linker and hook up the module instance.
     ComPtr<ID3D11Linker> linker;
     D3DCreateLinker(&linker);
-    linker->UseLibrary(shaderLibraryInstance.Get());
-
-    // // Link the vertex shader.
-    // ComPtr<ID3DBlob> errorBlob;
-    // if (FAILED(linker->Link(vertexShaderGraphInstance.Get(), "main", ("vs" + m_shaderModelSuffix).c_str(), 0, &vertexShaderBlob, &errorBlob)))
-    // {
-    //     throw errorBlob;
-    // }
+    linker->UseLibrary(moduleInstance.Get());
 
     ComPtr<ID3DBlob> pBlob;
-    // if (FAILED(flg->GenerateHlsl(0, &pBlob)))
-    // {
-    //     return {nullptr, "fail to output signature"};
-    // }
-
-    // Link the vertex shader.
     ComPtr<ID3DBlob> errorBlob;
-    if (FAILED(linker->Link(shaderGraphInstance.Get(), "main", target.data(), 0, &pBlob, &errorBlob)))
+    if (FAILED(linker->Link(flgInstance.Get(), "main", target, 0, &pBlob, &errorBlob)))
     {
-        return {nullptr, "link"};
+        auto str = ToStr(errorBlob);
+        return {nullptr, str};
     }
 
     return {pBlob, ""};
@@ -155,12 +177,7 @@ static std::pair<ComPtr<ID3D11Module>, std::string> CompileModule(const std::str
             &codeBlob,
             &errorBlob)))
     {
-        std::string str;
-        if (errorBlob)
-        {
-            str.resize(errorBlob->GetBufferSize());
-            memcpy(str.data(), errorBlob->GetBufferPointer(), str.size());
-        }
+        auto str = ToStr(errorBlob);
         return {nullptr, str};
     }
 
@@ -184,8 +201,8 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
 
     // Create an instance of the library and define resource bindings for it.
     // In this sample we use the same slots as the source library however this is not required.
-    ComPtr<ID3D11ModuleInstance> shaderLibraryInstance;
-    if (FAILED(module->CreateInstance("", &shaderLibraryInstance)))
+    ComPtr<ID3D11ModuleInstance> moduleInstance;
+    if (FAILED(module->CreateInstance("", &moduleInstance)))
     {
         return {nullptr, "create instance"};
     }
@@ -209,8 +226,8 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
                 .Type = D3D_SVT_FLOAT,
                 .Class = D3D_SVC_VECTOR,
                 .Rows = 1,
-                .Columns = 2,
-                .InterpolationMode = D3D_INTERPOLATION_LINEAR,
+                .Columns = 4,
+                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
                 .Flags = D3D_PF_IN,
                 .FirstInRegister = 0,
                 .FirstInComponent = 0,
@@ -237,16 +254,23 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
                     .FirstOutComponent = 0,
                 },
             };
-        auto [vs, vsError] = Compile("vs_5_0", inParams, outParams, module, shaderLibraryInstance, "to_float4");
-        if (!vs)
+        auto [vsModule, vsError] = BuildGraph(inParams, outParams, module, "to_float4");
+        if (!vsModule)
         {
             return {nullptr, vsError};
         }
+
+        auto [vs, linkError] = Link("vs_5_0", vsModule, moduleInstance);
+        if (!vs)
+        {
+            return {nullptr, linkError};
+        }
         compiled->VS = vs;
+
         auto inputLayout = wgut::shader::InputLayout::Create(vs);
         if (!inputLayout)
         {
-            inputLayout = wgut::shader::InputLayout::Create(gsl::span<D3D11_PARAMETER_DESC>(inParams, 1));
+            return {nullptr, "fail to inputlayout"};
         }
         compiled->InputLayout = inputLayout;
     }
@@ -261,7 +285,7 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
                 .Class = D3D_SVC_VECTOR,
                 .Rows = 1,
                 .Columns = 4,
-                .InterpolationMode = D3D_INTERPOLATION_LINEAR,
+                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
                 .Flags = D3D_PF_IN,
                 .FirstInRegister = 0,
                 .FirstInComponent = 0,
@@ -274,8 +298,8 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
         D3D11_PARAMETER_DESC outParams[] =
             {
                 {
-                    .Name = "output_position",
-                    .SemanticName = "SV_POSITION",
+                    .Name = "output_color",
+                    .SemanticName = "SV_TARGET",
                     .Type = D3D_SVT_FLOAT,
                     .Class = D3D_SVC_VECTOR,
                     .Rows = 1,
@@ -288,10 +312,16 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const std::string_v
                     .FirstOutComponent = 0,
                 },
             };
-        auto [ps, psError] = Compile("ps_5_0", inParams, outParams, module, shaderLibraryInstance, "white");
-        if (!ps)
+        auto [psModule, psError] = BuildGraph(inParams, outParams, module, "white");
+        if (!psModule)
         {
             return {nullptr, psError};
+        }
+
+        auto [ps, linkError] = Link("ps_5_0", psModule, moduleInstance);
+        if (!ps)
+        {
+            return {nullptr, linkError};
         }
         compiled->PS = ps;
     }
