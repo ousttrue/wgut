@@ -103,5 +103,16 @@
             "environment": [],
             "externalConsole": false
         },
+        {
+            "name": "flg",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "build/Debug/bin/flg.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }

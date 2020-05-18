@@ -119,6 +119,51 @@ public:
         return nullptr;
     }
 
+    static DXGI_FORMAT GetFormat(D3D_SHADER_VARIABLE_TYPE t, D3D_SHADER_VARIABLE_CLASS c, UINT rows, UINT cols)
+    {
+        if (t == D3D_SVT_FLOAT && c == D3D_SVC_VECTOR)
+        {
+            if (rows == 1)
+            {
+                switch (cols)
+                {
+                case 2:
+                    return DXGI_FORMAT_R32G32_FLOAT;
+
+                case 3:
+                    return DXGI_FORMAT_R32G32B32_FLOAT;
+
+                case 4:
+                    return DXGI_FORMAT_R32G32B32A32_FLOAT;
+                }
+            }
+        }
+
+        return DXGI_FORMAT_UNKNOWN;
+    }
+
+    static std::shared_ptr<InputLayout> Create(const gsl::span<const D3D11_PARAMETER_DESC> &inParams)
+    {
+        auto layout = std::shared_ptr<InputLayout>(new InputLayout);
+
+        for (auto &param : inParams)
+        {
+            auto semantic = GetSemanticConstant(param.SemanticName);
+            InputLayoutElement element{
+                .SemanticName = semantic,
+                .SemanticIndex = 0,
+                .InputSlot = 0,
+                .AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
+                .InputSlotClass = INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                .InstanceDataStepRate = 0,
+            };
+            element.Format = GetFormat(param.Type, param.Class, param.Rows, param.Columns);
+            layout->m_layout.push_back(element);
+        }
+
+        return layout;
+    }
+
     static std::shared_ptr<InputLayout> Create(const ComPtr<ID3DBlob> vsByteCode)
     {
         ComPtr<ID3D11ShaderReflection> pReflection;
