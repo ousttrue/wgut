@@ -41,91 +41,23 @@ static wgut::d3d11::VertexBufferPtr CreateVertexBuffer(
     return vb;
 }
 
-namespace wgut::shader
+namespace wgut::shader::flg
 {
 
-static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
+static std::pair<ComPtr<ID3DBlob>, std::string> VS2(const ShaderLibrary &lib)
 {
-    // input
-    D3D11_PARAMETER_DESC inParams[] = {
-        {
-            .Name = "input_position",
-            .SemanticName = "POSITION",
-            .Type = D3D_SVT_FLOAT,
-            .Class = D3D_SVC_VECTOR,
-            .Rows = 1,
-            .Columns = 4,
-            .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-            .Flags = D3D_PF_IN,
-            .FirstInRegister = 0,
-            .FirstInComponent = 0,
-            .FirstOutRegister = 0,
-            .FirstOutComponent = 0,
-        },
-    };
+    auto input = std::make_tuple(Param<float4>("POSITION"));
+    auto output = std::make_tuple(Param<float4>("SV_POSITION"));
+    auto graph = make_graph(input, output);
 
-    // output
-    D3D11_PARAMETER_DESC outParams[] =
-        {
-            {
-                .Name = "output_position",
-                .SemanticName = "SV_POSITION",
-                .Type = D3D_SVT_FLOAT,
-                .Class = D3D_SVC_VECTOR,
-                .Rows = 1,
-                .Columns = 4,
-                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-                .Flags = D3D_PF_OUT,
-                .FirstInRegister = 0,
-                .FirstInComponent = 0,
-                .FirstOutRegister = 0,
-                .FirstOutComponent = 0,
-            },
-        };
-    // auto [vsModule, vsError] = BuildGraph(inParams, outParams, module, "to_float4");
-    ComPtr<ID3D11FunctionLinkingGraph> flg;
-    if (FAILED(D3DCreateFunctionLinkingGraph(0, &flg)))
-    {
-        return {nullptr, "fail to create flg"};
-    }
-
-    ComPtr<ID3D11LinkingNode> input;
-    if (FAILED(flg->SetInputSignature(
-            inParams,
-            static_cast<UINT>(_countof(inParams)),
-            &input)))
-    {
-        return {nullptr, "fail to input signature"};
-    }
-
-    ComPtr<ID3D11LinkingNode> output;
-    if (FAILED(flg->SetOutputSignature(
-            outParams,
-            static_cast<UINT>(_countof(outParams)),
-            &output)))
-    {
-        return {nullptr, "fail to output signature"};
-    }
-
-    // in -> out
-    if (FAILED(flg->PassValue(input.Get(), 0, output.Get(), 0)))
-    {
-        return {nullptr, GetLastError(flg)};
-    }
+    graph.passValue(graph.input<0>(), graph.output<0>());
 
     // Finalize the vertex shader graph.
     ComPtr<ID3D11ModuleInstance> flgInstance;
-    if (FAILED(flg->CreateModuleInstance(&flgInstance, nullptr)))
+    if (FAILED(graph.flg->CreateModuleInstance(&flgInstance, nullptr)))
     {
         return {nullptr, "create module"};
     }
-
-    // return {flgInstance, ""};
-
-    // if (!vsModule)
-    // {
-    //     return {nullptr, vsError};
-    // }
 
     auto [vs, linkError] = Link("vs_5_0", flgInstance, lib.Instance);
     if (!vs)
@@ -133,16 +65,15 @@ static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
         return {nullptr, linkError};
     }
 
-    // ComPtr<ID3DBlob> vs;
-    // if (FAILED(flg->GenerateHlsl(0, &vs)))
-    // {
-    //     return {nullptr, "generate"};
-    // }
-
     return {vs, ""};
 }
 
-static std::pair<ComPtr<ID3DBlob>, std::string> PS(const ShaderLibrary &lib)
+} // namespace wgut::shader::flg
+
+template<typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
+
+static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::ShaderLibrary &lib)
 {
     // input
     D3D11_PARAMETER_DESC inParams[] = {
@@ -199,7 +130,7 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const ShaderLibrary &lib)
     ComPtr<ID3D11LinkingNode> func;
     if (FAILED(flg->CallFunction("", lib.Module.Get(), "white", &func)))
     {
-        auto str = GetLastError(flg);
+        auto str = wgut::shader::flg::GetLastError(flg);
         return {nullptr, str};
     }
 
@@ -225,7 +156,7 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const ShaderLibrary &lib)
         return {nullptr, "create module"};
     }
 
-    auto [ps, linkError] = Link("ps_5_0", flgInstance, lib.Instance);
+    auto [ps, linkError] = wgut::shader::flg::Link("ps_5_0", flgInstance, lib.Instance);
     if (!ps)
     {
         return {nullptr, linkError};
@@ -234,12 +165,12 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const ShaderLibrary &lib)
     return {ps, ""};
 }
 
-static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const ShaderLibrary &lib)
+static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const wgut::shader::flg::ShaderLibrary &lib)
 {
     auto compiled = std::make_shared<wgut::shader::Compiled>();
 
     {
-        auto [vs, error] = VS(lib);
+        auto [vs, error] = VS2(lib);
         if (!vs)
         {
             return {nullptr, error};
@@ -265,8 +196,6 @@ static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const ShaderLibrary
 
     return {compiled, ""};
 }
-
-} // namespace wgut::shader
 
 int main(int argc, char **argv)
 {
@@ -298,7 +227,7 @@ int main(int argc, char **argv)
     wgut::d3d11::SwapChainRenderTarget rt(swapchain);
 
     // flg
-    auto [lib, moduleError] = wgut::shader::CompileModule(SHADER);
+    auto [lib, moduleError] = wgut::shader::flg::CompileModule(SHADER);
     if (!lib.Instance)
     {
         std::cerr << moduleError << std::endl;

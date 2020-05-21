@@ -27,6 +27,15 @@
         "xstring": "cpp",
         "xutility": "cpp",
         "chrono": "cpp",
-        "ratio": "cpp"
+        "ratio": "cpp",
+        "algorithm": "cpp",
+        "istream": "cpp",
+        "iterator": "cpp",
+        "streambuf": "cpp",
+        "xlocale": "cpp",
+        "xlocnum": "cpp",
+        "*.rh": "cpp",
+        "ios": "cpp",
+        "ostream": "cpp"
     }
 }

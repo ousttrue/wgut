@@ -1,7 +1,7 @@
 #pragma once
 #include "wgut_shader.h"
 
-namespace wgut::shader
+namespace wgut::shader::flg
 {
 
 inline std::string GetLastError(const ComPtr<ID3D11FunctionLinkingGraph> &flg)
@@ -76,4 +76,183 @@ inline std::pair<ComPtr<ID3DBlob>, std::string> Link(
     return {pBlob, ""};
 }
 
-} // namespace wgut::shader
+template <typename T>
+struct Param
+{
+    using type = T;
+    std::string name;
+
+    Param(const std::string_view &_name)
+        : name(_name)
+    {
+    }
+};
+
+struct float4
+{
+    float x;
+    float y;
+    float z;
+    float w;
+};
+
+std::tuple<> param_type(const std::tuple<> &_)
+{
+    return std::tuple<>();
+}
+
+template <typename T, typename... TS>
+decltype(auto) param_type(const std::tuple<T, TS...> &t)
+{
+    auto rest = param_type(std::tuple<TS...>());
+    return std::tuple_cat(std::tuple<T::type>(), rest);
+};
+
+template <typename T>
+struct Src
+{
+    ComPtr<ID3D11LinkingNode> node;
+    UINT parameterIndex;
+};
+template <typename T>
+struct Dst
+{
+    ComPtr<ID3D11LinkingNode> node;
+    UINT parameterIndex;
+};
+
+template <typename IN_TYPES, typename OUT_TYPES>
+struct Graph
+{
+    ComPtr<ID3D11FunctionLinkingGraph> flg;
+    ComPtr<ID3D11LinkingNode> m_input;
+    ComPtr<ID3D11LinkingNode> m_output;
+
+    template <UINT N>
+    decltype(auto) input()
+    {
+        return Src<std::tuple_element<N, IN_TYPES>::type>{m_input, N};
+    }
+
+    template <UINT N>
+    decltype(auto) output()
+    {
+        return Dst<std::tuple_element<N, OUT_TYPES>::type>{m_output, N};
+    }
+
+    template <typename T>
+    void passValue(const Src<T> &src, const Dst<T> &dst)
+    {
+        flg->PassValue(src.node.Get(), src.parameterIndex, dst.node.Get(), dst.parameterIndex);
+    }
+};
+
+template <std::size_t... Ns, typename... Ts>
+auto tail_impl(std::index_sequence<Ns...>, std::tuple<Ts...> t)
+{
+    return std::make_tuple(std::get<Ns + 1u>(t)...);
+}
+
+template <typename... Ts>
+auto tail(std::tuple<Ts...> t)
+{
+    return tail_impl(std::make_index_sequence<sizeof...(Ts) - 1u>(), t);
+}
+
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<> &_)
+{
+}
+
+template <typename T, typename... TS>
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<T, TS...> &ts);
+
+template <typename... TS>
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<float4>, TS...> &ts)
+{
+    auto &t = std::get<0>(ts);
+    list->push_back({
+        .Name = t.name.c_str(),
+        .SemanticName = t.name.c_str(),
+        .Type = D3D_SVT_FLOAT,
+        .Class = D3D_SVC_VECTOR,
+        .Rows = 1,
+        .Columns = 4,
+        .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
+        .Flags = D3D_PF_IN,
+        .FirstInRegister = 0,
+        .FirstInComponent = 0,
+        .FirstOutRegister = 0,
+        .FirstOutComponent = 0,
+    });
+
+    add_input(list, tail(ts));
+}
+
+void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<> &_)
+{
+}
+
+template <typename T, typename... TS>
+void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<T, TS...> &ts);
+
+template <typename... TS>
+void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<float4>, TS...> &ts)
+{
+    auto &t = std::get<0>(ts);
+    list->push_back({
+        .Name = t.name.c_str(),
+        .SemanticName = t.name.c_str(),
+        .Type = D3D_SVT_FLOAT,
+        .Class = D3D_SVC_VECTOR,
+        .Rows = 1,
+        .Columns = 4,
+        .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
+        .Flags = D3D_PF_IN,
+        .FirstInRegister = 0,
+        .FirstInComponent = 0,
+        .FirstOutRegister = 0,
+        .FirstOutComponent = 0,
+    });
+
+    add_output(list, tail(ts));
+}
+
+template <typename IN_PARAMS, typename OUT_PARAMS>
+decltype(auto) make_graph(const IN_PARAMS &inParams, const OUT_PARAMS &outParams)
+{
+    using inTypes = decltype(param_type(inParams));
+    using outTypes = decltype(param_type(outParams));
+    Graph<inTypes, outTypes> graph;
+    if (FAILED(D3DCreateFunctionLinkingGraph(0, &graph.flg)))
+    {
+        throw "fail to create flg";
+    }
+
+    {
+        std::vector<D3D11_PARAMETER_DESC> params;
+        add_input(&params, inParams);
+        if (FAILED(graph.flg->SetInputSignature(
+                params.data(),
+                static_cast<UINT>(params.size()),
+                &graph.m_input)))
+        {
+            throw "fail to input signature";
+        }
+    }
+
+    {
+        std::vector<D3D11_PARAMETER_DESC> params;
+        add_output(&params, outParams);
+        if (FAILED(graph.flg->SetOutputSignature(
+                params.data(),
+                static_cast<UINT>(params.size()),
+                &graph.m_output)))
+        {
+            throw "fail to output signature";
+        }
+    }
+
+    return graph;
+}
+
+} // namespace wgut::shader::flg
