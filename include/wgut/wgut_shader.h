@@ -8,6 +8,17 @@
 namespace wgut::shader
 {
 
+inline std::string ToStr(const ComPtr<ID3DBlob> &blob)
+{
+    std::string str;
+    if (blob)
+    {
+        str.resize(blob->GetBufferSize());
+        memcpy(str.data(), blob->GetBufferPointer(), str.size());
+    }
+    return str;
+}
+
 struct CompileResult
 {
     ComPtr<ID3DBlob> ByteCode;
