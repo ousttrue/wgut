@@ -44,11 +44,11 @@ static wgut::d3d11::VertexBufferPtr CreateVertexBuffer(
 namespace wgut::shader::flg
 {
 
-static std::pair<ComPtr<ID3DBlob>, std::string> VS2(const ShaderLibrary &lib)
+static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
 {
     auto input = std::make_tuple(Param<float4>("POSITION"));
     auto output = std::make_tuple(Param<float4>("SV_POSITION"));
-    auto graph = make_graph(input, output);
+    auto graph = make_graph(nullptr, input, output);
 
     graph.passValue(graph.input<0>(), graph.output<0>());
 
@@ -68,65 +68,15 @@ static std::pair<ComPtr<ID3DBlob>, std::string> VS2(const ShaderLibrary &lib)
     return {vs, ""};
 }
 
-} // namespace wgut::shader::flg
-
-template<typename T>
-using ComPtr = Microsoft::WRL::ComPtr<T>;
-
 static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::ShaderLibrary &lib)
 {
-    // input
-    D3D11_PARAMETER_DESC inParams[] = {
-        {
-            .Name = "input_position",
-            .SemanticName = "SV_POSITION",
-            .Type = D3D_SVT_FLOAT,
-            .Class = D3D_SVC_VECTOR,
-            .Rows = 1,
-            .Columns = 4,
-            .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-            .Flags = D3D_PF_IN,
-            .FirstInRegister = 0,
-            .FirstInComponent = 0,
-            .FirstOutRegister = 0,
-            .FirstOutComponent = 0,
-        },
-    };
-
-    // output
-    D3D11_PARAMETER_DESC outParams[] =
-        {
-            {
-                .Name = "output_color",
-                .SemanticName = "SV_TARGET",
-                .Type = D3D_SVT_FLOAT,
-                .Class = D3D_SVC_VECTOR,
-                .Rows = 1,
-                .Columns = 4,
-                .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
-                .Flags = D3D_PF_OUT,
-                .FirstInRegister = 0,
-                .FirstInComponent = 0,
-                .FirstOutRegister = 0,
-                .FirstOutComponent = 0,
-            },
-        };
-
     ComPtr<ID3D11FunctionLinkingGraph> flg;
     if (FAILED(D3DCreateFunctionLinkingGraph(0, &flg)))
     {
-        return {nullptr, "fail to create flg"};
+        throw "create flg";
     }
 
-    // ComPtr<ID3D11LinkingNode> input;
-    // if (FAILED(flg->SetInputSignature(
-    //         inParams,
-    //         static_cast<UINT>(_countof(inParams)),
-    //         &input)))
-    // {
-    //     return {nullptr, "fail to input signature"};
-    // }
-
+    // function node before set output signature
     ComPtr<ID3D11LinkingNode> func;
     if (FAILED(flg->CallFunction("", lib.Module.Get(), "white", &func)))
     {
@@ -134,24 +84,19 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::Shad
         return {nullptr, str};
     }
 
-    ComPtr<ID3D11LinkingNode> output;
-    if (FAILED(flg->SetOutputSignature(
-            outParams,
-            static_cast<UINT>(_countof(outParams)),
-            &output)))
-    {
-        return {nullptr, "fail to output signature"};
-    }
+    auto input = std::tuple<>();
+    auto output = std::make_tuple(Param<float4>("SV_TARGET"));
+    auto graph = make_graph(flg, input, output);
 
     // func -> out
-    if (FAILED(flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, output.Get(), 0)))
+    if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, graph.m_output.Get(), 0)))
     {
         return {nullptr, "fail to func -> out"};
     }
 
     // Finalize the vertex shader graph.
     ComPtr<ID3D11ModuleInstance> flgInstance;
-    if (FAILED(flg->CreateModuleInstance(&flgInstance, nullptr)))
+    if (FAILED(graph.flg->CreateModuleInstance(&flgInstance, nullptr)))
     {
         return {nullptr, "create module"};
     }
@@ -165,12 +110,14 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::Shad
     return {ps, ""};
 }
 
+} // namespace wgut::shader::flg
+
 static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const wgut::shader::flg::ShaderLibrary &lib)
 {
     auto compiled = std::make_shared<wgut::shader::Compiled>();
 
     {
-        auto [vs, error] = VS2(lib);
+        auto [vs, error] = VS(lib);
         if (!vs)
         {
             return {nullptr, error};

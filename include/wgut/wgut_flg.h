@@ -218,16 +218,21 @@ void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<
 }
 
 template <typename IN_PARAMS, typename OUT_PARAMS>
-decltype(auto) make_graph(const IN_PARAMS &inParams, const OUT_PARAMS &outParams)
+decltype(auto) make_graph(const ComPtr<ID3D11FunctionLinkingGraph> &flg, const IN_PARAMS &inParams, const OUT_PARAMS &outParams)
 {
     using inTypes = decltype(param_type(inParams));
     using outTypes = decltype(param_type(outParams));
     Graph<inTypes, outTypes> graph;
-    if (FAILED(D3DCreateFunctionLinkingGraph(0, &graph.flg)))
+    if(flg)
+    {
+        graph.flg = flg;
+    }
+    else if (FAILED(D3DCreateFunctionLinkingGraph(0, &graph.flg)))
     {
         throw "fail to create flg";
     }
 
+    if(std::tuple_size<IN_PARAMS>())
     {
         std::vector<D3D11_PARAMETER_DESC> params;
         add_input(&params, inParams);
