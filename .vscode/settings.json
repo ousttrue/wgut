@@ -36,6 +36,7 @@
         "xlocnum": "cpp",
         "*.rh": "cpp",
         "ios": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "xiosbase": "cpp"
     }
 }

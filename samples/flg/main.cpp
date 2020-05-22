@@ -50,7 +50,7 @@ static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
     auto output = std::make_tuple(Param<float4>("SV_POSITION"));
     auto graph = make_graph(nullptr, input, output);
 
-    graph.passValue(graph.input<0>(), graph.output<0>());
+    graph.passValue(graph.input.src<0>(), graph.output.dst<0>());
 
     // Finalize the vertex shader graph.
     ComPtr<ID3D11ModuleInstance> flgInstance;
@@ -89,7 +89,7 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::Shad
     auto graph = make_graph(flg, input, output);
 
     // func -> out
-    if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, graph.m_output.Get(), 0)))
+    if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, graph.output.node.Get(), 0)))
     {
         return {nullptr, "fail to func -> out"};
     }

@@ -122,23 +122,29 @@ struct Dst
 };
 
 template <typename IN_TYPES, typename OUT_TYPES>
+struct Node
+{
+    ComPtr<ID3D11LinkingNode> node;
+
+    template <UINT N>
+    decltype(auto) src()
+    {
+        return Src<std::tuple_element<N, OUT_TYPES>::type>{node, N};
+    }
+
+    template <UINT N>
+    decltype(auto) dst()
+    {
+        return Dst<std::tuple_element<N, IN_TYPES>::type>{node, N};
+    }
+};
+
+template <typename IN_TYPES, typename OUT_TYPES>
 struct Graph
 {
     ComPtr<ID3D11FunctionLinkingGraph> flg;
-    ComPtr<ID3D11LinkingNode> m_input;
-    ComPtr<ID3D11LinkingNode> m_output;
-
-    template <UINT N>
-    decltype(auto) input()
-    {
-        return Src<std::tuple_element<N, IN_TYPES>::type>{m_input, N};
-    }
-
-    template <UINT N>
-    decltype(auto) output()
-    {
-        return Dst<std::tuple_element<N, OUT_TYPES>::type>{m_output, N};
-    }
+    Node<std::tuple<>, IN_TYPES> input;
+    Node<OUT_TYPES, std::tuple<>> output;
 
     template <typename T>
     void passValue(const Src<T> &src, const Dst<T> &dst)
@@ -223,7 +229,7 @@ decltype(auto) make_graph(const ComPtr<ID3D11FunctionLinkingGraph> &flg, const I
     using inTypes = decltype(param_type(inParams));
     using outTypes = decltype(param_type(outParams));
     Graph<inTypes, outTypes> graph;
-    if(flg)
+    if (flg)
     {
         graph.flg = flg;
     }
@@ -232,14 +238,14 @@ decltype(auto) make_graph(const ComPtr<ID3D11FunctionLinkingGraph> &flg, const I
         throw "fail to create flg";
     }
 
-    if(std::tuple_size<IN_PARAMS>())
+    if (std::tuple_size<IN_PARAMS>())
     {
         std::vector<D3D11_PARAMETER_DESC> params;
         add_input(&params, inParams);
         if (FAILED(graph.flg->SetInputSignature(
                 params.data(),
                 static_cast<UINT>(params.size()),
-                &graph.m_input)))
+                &graph.input.node)))
         {
             throw "fail to input signature";
         }
@@ -251,7 +257,7 @@ decltype(auto) make_graph(const ComPtr<ID3D11FunctionLinkingGraph> &flg, const I
         if (FAILED(graph.flg->SetOutputSignature(
                 params.data(),
                 static_cast<UINT>(params.size()),
-                &graph.m_output)))
+                &graph.output.node)))
         {
             throw "fail to output signature";
         }
