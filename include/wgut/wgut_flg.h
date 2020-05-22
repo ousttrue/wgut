@@ -126,6 +126,11 @@ struct Node
 {
     ComPtr<ID3D11LinkingNode> node;
 
+    Node(const ComPtr<ID3D11LinkingNode> &_node)
+        : node(_node)
+    {
+    }
+
     template <UINT N>
     decltype(auto) src()
     {
@@ -136,20 +141,6 @@ struct Node
     decltype(auto) dst()
     {
         return Dst<std::tuple_element<N, IN_TYPES>::type>{node, N};
-    }
-};
-
-template <typename IN_TYPES, typename OUT_TYPES>
-struct Graph
-{
-    ComPtr<ID3D11FunctionLinkingGraph> flg;
-    Node<std::tuple<>, IN_TYPES> input;
-    Node<OUT_TYPES, std::tuple<>> output;
-
-    template <typename T>
-    void passValue(const Src<T> &src, const Dst<T> &dst)
-    {
-        flg->PassValue(src.node.Get(), src.parameterIndex, dst.node.Get(), dst.parameterIndex);
     }
 };
 
@@ -223,47 +214,63 @@ void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<
     add_output(list, tail(ts));
 }
 
-template <typename IN_PARAMS, typename OUT_PARAMS>
-decltype(auto) make_graph(const ComPtr<ID3D11FunctionLinkingGraph> &flg, const IN_PARAMS &inParams, const OUT_PARAMS &outParams)
+struct Graph
 {
-    using inTypes = decltype(param_type(inParams));
-    using outTypes = decltype(param_type(outParams));
-    Graph<inTypes, outTypes> graph;
-    if (flg)
-    {
-        graph.flg = flg;
-    }
-    else if (FAILED(D3DCreateFunctionLinkingGraph(0, &graph.flg)))
-    {
-        throw "fail to create flg";
-    }
+    ComPtr<ID3D11FunctionLinkingGraph> flg;
 
-    if (std::tuple_size<IN_PARAMS>())
+    Graph()
     {
-        std::vector<D3D11_PARAMETER_DESC> params;
-        add_input(&params, inParams);
-        if (FAILED(graph.flg->SetInputSignature(
-                params.data(),
-                static_cast<UINT>(params.size()),
-                &graph.input.node)))
+        if (FAILED(D3DCreateFunctionLinkingGraph(0, &flg)))
         {
-            throw "fail to input signature";
+            throw "fail to create flg";
         }
     }
 
+    template <typename IN_PARAMS>
+    decltype(auto) make_input(const IN_PARAMS &inParams)
     {
-        std::vector<D3D11_PARAMETER_DESC> params;
-        add_output(&params, outParams);
-        if (FAILED(graph.flg->SetOutputSignature(
-                params.data(),
-                static_cast<UINT>(params.size()),
-                &graph.output.node)))
+        ComPtr<ID3D11LinkingNode> node;
         {
-            throw "fail to output signature";
+            std::vector<D3D11_PARAMETER_DESC> params;
+            add_input(&params, inParams);
+            if (FAILED(flg->SetInputSignature(
+                    params.data(),
+                    static_cast<UINT>(params.size()),
+                    &node)))
+            {
+                throw "fail to input signature";
+            }
         }
+
+        using inTypes = decltype(param_type(inParams));
+        return Node<std::tuple<>, inTypes>(node);
     }
 
-    return graph;
-}
+    template <typename OUT_PARAMS>
+    decltype(auto) make_output(const OUT_PARAMS &outParams)
+    {
+        ComPtr<ID3D11LinkingNode> node;
+        {
+            std::vector<D3D11_PARAMETER_DESC> params;
+            add_output(&params, outParams);
+            if (FAILED(flg->SetOutputSignature(
+                    params.data(),
+                    static_cast<UINT>(params.size()),
+                    &node)))
+            {
+                throw "fail to output signature";
+            }
+        }
+
+        using outTypes = decltype(param_type(outParams));
+        return Node<outTypes, std::tuple<>>(node);
+    }
+
+    template <typename T>
+    void passValue(const Src<T> &src, const Dst<T> &dst)
+    {
+        flg->PassValue(src.node.Get(), src.parameterIndex, dst.node.Get(), dst.parameterIndex);
+    }
+};
 
 } // namespace wgut::shader::flg

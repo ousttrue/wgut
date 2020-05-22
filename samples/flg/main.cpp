@@ -46,11 +46,11 @@ namespace wgut::shader::flg
 
 static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
 {
-    auto input = std::make_tuple(Param<float4>("POSITION"));
-    auto output = std::make_tuple(Param<float4>("SV_POSITION"));
-    auto graph = make_graph(nullptr, input, output);
+    auto graph = wgut::shader::flg::Graph();
+    auto input = graph.make_input(std::make_tuple(Param<float4>("POSITION")));
+    auto output = graph.make_output(std::make_tuple(Param<float4>("SV_POSITION")));
 
-    graph.passValue(graph.input.src<0>(), graph.output.dst<0>());
+    graph.passValue(input.src<0>(), output.dst<0>());
 
     // Finalize the vertex shader graph.
     ComPtr<ID3D11ModuleInstance> flgInstance;
@@ -70,26 +70,20 @@ static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
 
 static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::ShaderLibrary &lib)
 {
-    ComPtr<ID3D11FunctionLinkingGraph> flg;
-    if (FAILED(D3DCreateFunctionLinkingGraph(0, &flg)))
-    {
-        throw "create flg";
-    }
+    wgut::shader::flg::Graph graph;
 
     // function node before set output signature
     ComPtr<ID3D11LinkingNode> func;
-    if (FAILED(flg->CallFunction("", lib.Module.Get(), "white", &func)))
+    if (FAILED(graph.flg->CallFunction("", lib.Module.Get(), "white", &func)))
     {
-        auto str = wgut::shader::flg::GetLastError(flg);
+        auto str = wgut::shader::flg::GetLastError(graph.flg);
         return {nullptr, str};
     }
 
-    auto input = std::tuple<>();
-    auto output = std::make_tuple(Param<float4>("SV_TARGET"));
-    auto graph = make_graph(flg, input, output);
+    auto output = graph.make_output(std::make_tuple(Param<float4>("SV_TARGET")));
 
     // func -> out
-    if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, graph.output.node.Get(), 0)))
+    if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, output.node.Get(), 0)))
     {
         return {nullptr, "fail to func -> out"};
     }
