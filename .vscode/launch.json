@@ -104,10 +104,10 @@
             "externalConsole": false
         },
         {
-            "name": "flg",
+            "name": "flg_triangle",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "build/Debug/bin/flg.exe",
+            "program": "build/Debug/bin/flg_triangle.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

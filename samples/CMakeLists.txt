@@ -8,5 +8,5 @@ subdirs(
     imgui_simple
     gizmo
     grid
-    flg
+    flg_triangle
     )
