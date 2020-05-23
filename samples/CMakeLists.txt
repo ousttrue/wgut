@@ -9,4 +9,5 @@ subdirs(
     gizmo
     grid
     flg_triangle
+    flg_cube
     )

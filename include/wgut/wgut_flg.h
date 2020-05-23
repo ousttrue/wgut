@@ -211,6 +211,11 @@ void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float4> &t, 
     _add_vector_input(list, t.name.c_str(), 4, ts...);
 }
 template <typename... TS>
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float3> &t, const TS &... ts)
+{
+    _add_vector_input(list, t.name.c_str(), 3, ts...);
+}
+template <typename... TS>
 void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float2> &t, const TS &... ts)
 {
     _add_vector_input(list, t.name.c_str(), 2, ts...);
