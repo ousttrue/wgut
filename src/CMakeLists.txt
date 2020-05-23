@@ -1,7 +1,6 @@
 set(TARGET_NAME wgut)
 add_library(${TARGET_NAME}
     Win32Window.cpp
-    ImGuiImplScreenState.cpp
     gizmo.cpp
     gizmo_translation.cpp
     gizmo_rotation.cpp
