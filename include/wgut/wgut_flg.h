@@ -96,15 +96,15 @@ struct float4
     float w;
 };
 
-std::tuple<> param_type(const std::tuple<> &_)
+std::tuple<> param_type()
 {
     return std::tuple<>();
 }
 
 template <typename T, typename... TS>
-decltype(auto) param_type(const std::tuple<T, TS...> &t)
+decltype(auto) param_type(const T &t, const TS &... ts)
 {
-    auto rest = param_type(std::tuple<TS...>());
+    auto rest = param_type(ts...);
     return std::tuple_cat(std::tuple<T::type>(), rest);
 };
 
@@ -156,17 +156,13 @@ auto tail(std::tuple<Ts...> t)
     return tail_impl(std::make_index_sequence<sizeof...(Ts) - 1u>(), t);
 }
 
-void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<> &_)
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list)
 {
 }
 
-template <typename T, typename... TS>
-void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<T, TS...> &ts);
-
 template <typename... TS>
-void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<float4>, TS...> &ts)
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float4> &t, const TS &... ts)
 {
-    auto &t = std::get<0>(ts);
     list->push_back({
         .Name = t.name.c_str(),
         .SemanticName = t.name.c_str(),
@@ -182,20 +178,16 @@ void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<f
         .FirstOutComponent = 0,
     });
 
-    add_input(list, tail(ts));
+    add_input(list, ts...);
 }
 
-void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<> &_)
+void add_output(std::vector<D3D11_PARAMETER_DESC> *list)
 {
 }
-
-template <typename T, typename... TS>
-void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<T, TS...> &ts);
 
 template <typename... TS>
-void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<float4>, TS...> &ts)
+void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float4> &t, const TS &... ts)
 {
-    auto &t = std::get<0>(ts);
     list->push_back({
         .Name = t.name.c_str(),
         .SemanticName = t.name.c_str(),
@@ -211,7 +203,7 @@ void add_output(std::vector<D3D11_PARAMETER_DESC> *list, const std::tuple<Param<
         .FirstOutComponent = 0,
     });
 
-    add_output(list, tail(ts));
+    add_output(list, ts...);
 }
 
 struct Graph
@@ -226,13 +218,13 @@ struct Graph
         }
     }
 
-    template <typename IN_PARAMS>
-    decltype(auto) make_input(const IN_PARAMS &inParams)
+    template <typename... IN_PARAMS>
+    decltype(auto) make_input(const IN_PARAMS &... inParams)
     {
         ComPtr<ID3D11LinkingNode> node;
         {
             std::vector<D3D11_PARAMETER_DESC> params;
-            add_input(&params, inParams);
+            add_input(&params, inParams...);
             if (FAILED(flg->SetInputSignature(
                     params.data(),
                     static_cast<UINT>(params.size()),
@@ -242,17 +234,17 @@ struct Graph
             }
         }
 
-        using inTypes = decltype(param_type(inParams));
+        using inTypes = decltype(param_type(inParams...));
         return Node<std::tuple<>, inTypes>(node);
     }
 
-    template <typename OUT_PARAMS>
-    decltype(auto) make_output(const OUT_PARAMS &outParams)
+    template <typename... OUT_PARAMS>
+    decltype(auto) make_output(const OUT_PARAMS &... outParams)
     {
         ComPtr<ID3D11LinkingNode> node;
         {
             std::vector<D3D11_PARAMETER_DESC> params;
-            add_output(&params, outParams);
+            add_output(&params, outParams...);
             if (FAILED(flg->SetOutputSignature(
                     params.data(),
                     static_cast<UINT>(params.size()),
@@ -262,7 +254,7 @@ struct Graph
             }
         }
 
-        using outTypes = decltype(param_type(outParams));
+        using outTypes = decltype(param_type(outParams...));
         return Node<outTypes, std::tuple<>>(node);
     }
 

@@ -47,8 +47,8 @@ namespace wgut::shader::flg
 static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
 {
     auto graph = wgut::shader::flg::Graph();
-    auto input = graph.make_input(std::make_tuple(Param<float4>("POSITION")));
-    auto output = graph.make_output(std::make_tuple(Param<float4>("SV_POSITION")));
+    auto input = graph.make_input(Param<float4>("POSITION"));
+    auto output = graph.make_output(Param<float4>("SV_POSITION"));
 
     graph.passValue(input.src<0>(), output.dst<0>());
 
@@ -80,7 +80,7 @@ static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::Shad
         return {nullptr, str};
     }
 
-    auto output = graph.make_output(std::make_tuple(Param<float4>("SV_TARGET")));
+    auto output = graph.make_output(Param<float4>("SV_TARGET"));
 
     // func -> out
     if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, output.node.Get(), 0)))
