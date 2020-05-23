@@ -56,10 +56,18 @@ inline std::pair<ShaderLibrary, std::string> CompileModule(const std::string_vie
 }
 
 inline std::pair<ComPtr<ID3DBlob>, std::string> Link(
+    const ComPtr<ID3D11FunctionLinkingGraph> &flg,
     const char *target,
-    const ComPtr<ID3D11ModuleInstance> &flgInstance,
     const ComPtr<ID3D11ModuleInstance> &moduleInstance)
 {
+    // Finalize the vertex shader graph.
+    ComPtr<ID3D11ModuleInstance> flgInstance;
+    if (FAILED(flg->CreateModuleInstance(&flgInstance, nullptr)))
+    {
+        auto str = GetLastError(flg);
+        return {nullptr, str};
+    }
+
     // Create a linker and hook up the module instance.
     ComPtr<ID3D11Linker> linker;
     D3DCreateLinker(&linker);
@@ -88,6 +96,17 @@ struct Param
     }
 };
 
+struct float2
+{
+    float x;
+    float y;
+};
+struct float3
+{
+    float x;
+    float y;
+    float z;
+};
 struct float4
 {
     float x;
@@ -112,13 +131,13 @@ template <typename T>
 struct Src
 {
     ComPtr<ID3D11LinkingNode> node;
-    UINT parameterIndex;
+    int parameterIndex;
 };
 template <typename T>
 struct Dst
 {
     ComPtr<ID3D11LinkingNode> node;
-    UINT parameterIndex;
+    int parameterIndex;
 };
 
 template <typename IN_TYPES, typename OUT_TYPES>
@@ -135,6 +154,11 @@ struct Node
     decltype(auto) src()
     {
         return Src<std::tuple_element<N, OUT_TYPES>::type>{node, N};
+    }
+
+    decltype(auto) ret()
+    {
+        return Src<std::tuple_element<0, OUT_TYPES>::type>{node, D3D_RETURN_PARAMETER_INDEX};
     }
 
     template <UINT N>
@@ -161,15 +185,15 @@ void add_input(std::vector<D3D11_PARAMETER_DESC> *list)
 }
 
 template <typename... TS>
-void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float4> &t, const TS &... ts)
+void _add_vector_input(std::vector<D3D11_PARAMETER_DESC> *list, const char *name, UINT columns, const TS &... ts)
 {
     list->push_back({
-        .Name = t.name.c_str(),
-        .SemanticName = t.name.c_str(),
+        .Name = name,
+        .SemanticName = name,
         .Type = D3D_SVT_FLOAT,
         .Class = D3D_SVC_VECTOR,
         .Rows = 1,
-        .Columns = 4,
+        .Columns = columns,
         .InterpolationMode = D3D_INTERPOLATION_UNDEFINED,
         .Flags = D3D_PF_IN,
         .FirstInRegister = 0,
@@ -179,6 +203,17 @@ void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float4> &t, 
     });
 
     add_input(list, ts...);
+}
+
+template <typename... TS>
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float4> &t, const TS &... ts)
+{
+    _add_vector_input(list, t.name.c_str(), 4, ts...);
+}
+template <typename... TS>
+void add_input(std::vector<D3D11_PARAMETER_DESC> *list, const Param<float2> &t, const TS &... ts)
+{
+    _add_vector_input(list, t.name.c_str(), 2, ts...);
 }
 
 void add_output(std::vector<D3D11_PARAMETER_DESC> *list)
@@ -258,10 +293,26 @@ struct Graph
         return Node<outTypes, std::tuple<>>(node);
     }
 
+    template <typename IN_PARAMS, typename OUT_PARAMS>
+    decltype(auto) make_call(const ComPtr<ID3D11Module> &module, const char *name)
+    {
+        ComPtr<ID3D11LinkingNode> node;
+        if (FAILED(flg->CallFunction("", module.Get(), name, &node)))
+        {
+            auto str = wgut::shader::flg::GetLastError(flg);
+            throw str;
+        }
+        return Node<IN_PARAMS, OUT_PARAMS>(node);
+    }
+
     template <typename T>
     void passValue(const Src<T> &src, const Dst<T> &dst)
     {
-        flg->PassValue(src.node.Get(), src.parameterIndex, dst.node.Get(), dst.parameterIndex);
+        if (FAILED(flg->PassValue(src.node.Get(), src.parameterIndex, dst.node.Get(), dst.parameterIndex)))
+        {
+            auto str = GetLastError(flg);
+            throw str;
+        }
     }
 };
 

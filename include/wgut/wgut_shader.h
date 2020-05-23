@@ -285,6 +285,22 @@ struct Compiled
     ComPtr<ID3DBlob> VS;
     InputLayoutPtr InputLayout;
     ComPtr<ID3DBlob> PS;
+
+    static std::shared_ptr<Compiled> Create(const ComPtr<ID3DBlob> &vs, const ComPtr<ID3DBlob> &ps)
+    {
+        auto compiled = std::make_shared<Compiled>();
+
+        auto inputLayout = wgut::shader::InputLayout::Create(vs);
+        if (!inputLayout)
+        {
+            return nullptr;
+        }
+        compiled->InputLayout = inputLayout;
+        compiled->VS = vs;
+        compiled->PS = ps;
+
+        return compiled;
+    }
 };
 using CompiledPtr = std::shared_ptr<Compiled>;
 

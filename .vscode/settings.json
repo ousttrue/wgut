@@ -37,6 +37,9 @@
         "*.rh": "cpp",
         "ios": "cpp",
         "ostream": "cpp",
-        "xiosbase": "cpp"
+        "xiosbase": "cpp",
+        "cmath": "cpp",
+        "tuple": "cpp",
+        "xmemory": "cpp"
     }
 }

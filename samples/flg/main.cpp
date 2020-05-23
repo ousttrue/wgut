@@ -4,6 +4,13 @@
 #include <stdexcept>
 #include <iostream>
 
+#ifndef WINDOW_NAME
+#define WINDOW_NAME "WINDOW_NAME"
+#endif
+
+namespace wgut::shader::flg
+{
+
 auto SHADER = R"(
 export float4 to_float4(float2 xy)
 {
@@ -16,126 +23,82 @@ export float4 white()
 }
 )";
 
+static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
+{
+    Graph graph;
+    auto input = graph.make_input(Param<float2>("POSITION"));
+    auto to_float4 = graph.make_call<std::tuple<float2>, std::tuple<float4>>(lib.Module, "to_float4");
+    auto output = graph.make_output(Param<float4>("SV_POSITION"));
+
+    graph.passValue(input.src<0>(), to_float4.dst<0>());
+    graph.passValue(to_float4.ret(), output.dst<0>());
+
+    return Link(graph.flg, "vs_5_0", lib.Instance);
+}
+
+static std::pair<ComPtr<ID3DBlob>, std::string> PS(const ShaderLibrary &lib)
+{
+    Graph graph;
+    auto white = graph.make_call<std::tuple<>, std::tuple<float4>>(lib.Module, "white");
+    auto output = graph.make_output(Param<float4>("SV_TARGET"));
+
+    graph.passValue(white.ret(), output.dst<0>());
+
+    return Link(graph.flg, "ps_5_0", lib.Instance);
+}
+
+static wgut::shader::CompiledPtr FLG()
+{
+    auto [lib, moduleError] = CompileModule(SHADER);
+    if (!lib.Instance)
+    {
+        std::cerr << moduleError << std::endl;
+        throw std::runtime_error(moduleError);
+    }
+    auto [vs, vsError] = VS(lib);
+    if (!vs)
+    {
+        std::cerr << vsError << std::endl;
+        throw std::runtime_error(vsError);
+    }
+    auto [ps, psError] = PS(lib);
+    if (!ps)
+    {
+        std::cerr << psError << std::endl;
+        throw std::runtime_error(psError);
+    }
+    auto compiled = wgut::shader::Compiled::Create(vs, ps);
+    if (!compiled)
+    {
+        std::cerr << "fail to inputLayout" << std::endl;
+        throw std::runtime_error("fail to inputLayout");
+    }
+    return compiled;
+}
+
+} // namespace wgut::shader::flg
+
 static wgut::d3d11::VertexBufferPtr CreateVertexBuffer(
     const Microsoft::WRL::ComPtr<ID3D11Device> &device,
     const std::shared_ptr<wgut::shader::Compiled> &compiled)
 {
     // create vertex buffer
-    struct float4
+    struct float2
     {
         float x;
         float y;
-        float z;
-        float w;
     };
     // clockwise
-    float4 vertices[] = {
-        {0.5f, -0.5f, 0, 1},
-        {-0.5f, -0.5f, 0, 1},
-        {0.0f, 0.5f, 0, 1}};
+    float2 vertices[] = {
+        {0.5f, -0.5f},
+        {-0.5f, -0.5f},
+        {0.0f, 0.5f}};
     uint16_t indices[] = {
         0, 1, 2};
     auto vb = std::make_shared<wgut::d3d11::VertexBuffer>();
     vb->Vertices(device, compiled->VS, compiled->InputLayout->Elements(), vertices);
     vb->Indices(device, indices);
     return vb;
-}
-
-namespace wgut::shader::flg
-{
-
-static std::pair<ComPtr<ID3DBlob>, std::string> VS(const ShaderLibrary &lib)
-{
-    auto graph = wgut::shader::flg::Graph();
-    auto input = graph.make_input(Param<float4>("POSITION"));
-    auto output = graph.make_output(Param<float4>("SV_POSITION"));
-
-    graph.passValue(input.src<0>(), output.dst<0>());
-
-    // Finalize the vertex shader graph.
-    ComPtr<ID3D11ModuleInstance> flgInstance;
-    if (FAILED(graph.flg->CreateModuleInstance(&flgInstance, nullptr)))
-    {
-        return {nullptr, "create module"};
-    }
-
-    auto [vs, linkError] = Link("vs_5_0", flgInstance, lib.Instance);
-    if (!vs)
-    {
-        return {nullptr, linkError};
-    }
-
-    return {vs, ""};
-}
-
-static std::pair<ComPtr<ID3DBlob>, std::string> PS(const wgut::shader::flg::ShaderLibrary &lib)
-{
-    wgut::shader::flg::Graph graph;
-
-    // function node before set output signature
-    ComPtr<ID3D11LinkingNode> func;
-    if (FAILED(graph.flg->CallFunction("", lib.Module.Get(), "white", &func)))
-    {
-        auto str = wgut::shader::flg::GetLastError(graph.flg);
-        return {nullptr, str};
-    }
-
-    auto output = graph.make_output(Param<float4>("SV_TARGET"));
-
-    // func -> out
-    if (FAILED(graph.flg->PassValue(func.Get(), D3D_RETURN_PARAMETER_INDEX, output.node.Get(), 0)))
-    {
-        return {nullptr, "fail to func -> out"};
-    }
-
-    // Finalize the vertex shader graph.
-    ComPtr<ID3D11ModuleInstance> flgInstance;
-    if (FAILED(graph.flg->CreateModuleInstance(&flgInstance, nullptr)))
-    {
-        return {nullptr, "create module"};
-    }
-
-    auto [ps, linkError] = wgut::shader::flg::Link("ps_5_0", flgInstance, lib.Instance);
-    if (!ps)
-    {
-        return {nullptr, linkError};
-    }
-
-    return {ps, ""};
-}
-
-} // namespace wgut::shader::flg
-
-static std::pair<wgut::shader::CompiledPtr, std::string> FLG(const wgut::shader::flg::ShaderLibrary &lib)
-{
-    auto compiled = std::make_shared<wgut::shader::Compiled>();
-
-    {
-        auto [vs, error] = VS(lib);
-        if (!vs)
-        {
-            return {nullptr, error};
-        }
-        compiled->VS = vs;
-
-        auto inputLayout = wgut::shader::InputLayout::Create(vs);
-        if (!inputLayout)
-        {
-            return {nullptr, "fail to inputlayout"};
-        }
-        compiled->InputLayout = inputLayout;
-    }
-
-    {
-        auto [ps, error] = PS(lib);
-        if (!ps)
-        {
-            return {nullptr, error};
-        }
-        compiled->PS = ps;
-    }
-
-    return {compiled, ""};
 }
 
 int main(int argc, char **argv)
@@ -168,22 +131,13 @@ int main(int argc, char **argv)
     wgut::d3d11::SwapChainRenderTarget rt(swapchain);
 
     // flg
-    auto [lib, moduleError] = wgut::shader::flg::CompileModule(SHADER);
-    if (!lib.Instance)
-    {
-        std::cerr << moduleError << std::endl;
-        throw std::runtime_error(moduleError);
-    }
-
-    auto [compiled, error] = FLG(lib);
+    auto compiled = wgut::shader::flg::FLG();
     if (!compiled)
     {
-        std::cerr << error << std::endl;
-        throw std::runtime_error(error);
+        throw std::runtime_error("fail to compile shader");
     }
-
+    // shader
     auto shader = wgut::d3d11::Shader::Create(device, compiled->VS, compiled->PS);
-
     // triangle
     auto triangle = CreateVertexBuffer(device, compiled);
 
