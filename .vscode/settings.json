@@ -40,6 +40,11 @@
         "xiosbase": "cpp",
         "cmath": "cpp",
         "tuple": "cpp",
-        "xmemory": "cpp"
+        "xmemory": "cpp",
+        "functional": "cpp",
+        "string": "cpp",
+        "typeinfo": "cpp",
+        "utility": "cpp",
+        "xlocinfo": "cpp"
     }
 }

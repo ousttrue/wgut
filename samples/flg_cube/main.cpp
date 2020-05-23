@@ -92,6 +92,73 @@ static wgut::shader::CompiledPtr FLG()
 template <typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 
+//
+// should create from shader reflection
+//
+namespace shaderlib
+{
+template <typename T, size_t N>
+struct Range
+{
+    static const size_t size_bytes = sizeof(T) * N;
+    T *data;
+
+    Range(void *p)
+        : data((T *)p)
+    {
+    }
+};
+
+class ICBGetter
+{
+public:
+    virtual void View(const Range<float, 16> &bytes) const = 0;
+    virtual void Projection(const Range<float, 16> &bytes) const = 0;
+};
+void CBUpdate(const ComPtr<ID3D11DeviceContext> &context,
+              const ComPtr<ID3D11Buffer> &cb,
+              const ICBGetter *getter)
+{
+    D3D11_MAPPED_SUBRESOURCE mapped;
+    if (FAILED(context->Map(cb.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+    {
+        throw "map";
+    }
+
+    {
+        getter->View(Range<float, 16>(mapped.pData));
+        getter->Projection(Range<float, 16>(((uint8_t *)mapped.pData + 64)));
+    }
+
+    context->Unmap(cb.Get(), 0);
+}
+
+} // namespace shaderlib
+
+//
+// implement
+//
+class CBGetter : public shaderlib::ICBGetter
+{
+    const wgut::OrbitCamera *m_camera;
+
+public:
+    CBGetter(const wgut::OrbitCamera *camera)
+        : m_camera(camera)
+    {
+    }
+
+    void View(const shaderlib::Range<float, 16> &bytes) const override
+    {
+        memcpy(bytes.data, m_camera->state.view.data(), bytes.size_bytes);
+    }
+
+    void Projection(const shaderlib::Range<float, 16> &bytes) const override
+    {
+        memcpy(bytes.data, m_camera->state.projection.data(), bytes.size_bytes);
+    }
+};
+
 wgut::d3d11::VertexBufferPtr CreateVertexBuffer(const ComPtr<ID3D11Device> &device,
                                                 const wgut::shader::CompiledPtr &compiled)
 {
@@ -165,33 +232,25 @@ int main(int argc, char **argv)
 
     // camera
     auto camera = std::make_shared<wgut::OrbitCamera>(wgut::PerspectiveTypes::D3D);
-    struct SceneConstantBuffer
-    {
-        std::array<float, 16> View;
-        std::array<float, 16> Projection;
-    };
-    auto b0 = wgut::d3d11::ConstantBuffer<SceneConstantBuffer>::Create(device);
+    CBGetter getter(camera.get());
+
+    auto b0 = wgut::d3d11::CreateConstantBuffer(device, sizeof(float) * 32);
 
     // main loop
     float clearColor[4] = {0.3f, 0.2f, 0.1f, 1.0f};
     wgut::ScreenState state;
     while (window.TryGetState(&state))
     {
-        {
-            // update camera
-            camera->Update(state);
-            auto sceneData = b0->Payload();
-            sceneData->Projection = camera->state.projection;
-            sceneData->View = camera->state.view;
-            b0->Upload(context);
-        }
+        // update camera
+        camera->Update(state);
 
         // update
         rt.UpdateViewport(device, state.Width, state.Height);
+        CBUpdate(context, b0, &getter);
 
         // draw
         rt.ClearAndSet(context, clearColor);
-        ID3D11Buffer *constants[] = {b0->Ptr()};
+        ID3D11Buffer *constants[] = {b0.Get()};
         shader->Setup(context, constants);
         vb->Draw(context);
 

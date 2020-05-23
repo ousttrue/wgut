@@ -308,6 +308,22 @@ public:
 };
 using ShaderPtr = std::shared_ptr<Shader>;
 
+inline ComPtr<ID3D11Buffer> CreateConstantBuffer(const ComPtr<ID3D11Device> &device, UINT size)
+{
+    D3D11_BUFFER_DESC desc = {
+        desc.ByteWidth = size,
+        desc.Usage = D3D11_USAGE_DYNAMIC,
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+    };
+    ComPtr<ID3D11Buffer> cb;
+    if (FAILED(device->CreateBuffer(&desc, nullptr, &cb)))
+    {
+        return nullptr;
+    }
+    return cb;
+}
+
 template <typename T>
 class ConstantBuffer
 {
