@@ -4,6 +4,7 @@
 #include <gsl/span>
 #include <memory>
 #include <string_view>
+#include <stdexcept>
 
 namespace wgut::shader
 {

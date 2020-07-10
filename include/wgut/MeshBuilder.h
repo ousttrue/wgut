@@ -1,5 +1,6 @@
 #pragma once
 #include <gsl/span>
+#include <stdexcept>
 #include <stdint.h>
 #include <assert.h>
 

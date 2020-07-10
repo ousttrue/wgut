@@ -10,6 +10,8 @@ add_library(${TARGET_NAME}
     ImGuiImplScreenState.cpp
     )
 target_include_directories(${TARGET_NAME}
+PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/../include
 PUBLIC
     ${IMGUI_DIR}
     )

@@ -1,6 +1,7 @@
 #pragma once
 #include "gizmo.h"
 #include <unordered_map>
+#include <memory>
 #include <falg.h>
 
 namespace wgut::gizmo
