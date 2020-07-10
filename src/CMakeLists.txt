@@ -21,6 +21,5 @@ PUBLIC
     dxgi
     d3dcompiler
     d2d1
-    gsl
     imgui
     )

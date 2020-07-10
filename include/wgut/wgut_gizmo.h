@@ -2,7 +2,7 @@
 #include <string>
 #include <array>
 #include <stdint.h>
-#include <gsl/span>
+#include <span>
 
 namespace wgut::gizmo
 {
@@ -37,8 +37,8 @@ struct GizmoSystem
         // uint8_t *pIndices;
         // uint32_t indicesBytes;
         // uint32_t indexStride;
-        gsl::span<const Vertex> Vertices;
-        gsl::span<const uint32_t> Indices;
+        std::span<const Vertex> Vertices;
+        std::span<const uint32_t> Indices;
     };
     Buffer end();
 };

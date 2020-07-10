@@ -3,7 +3,8 @@
 #include "wgut_dxgi.h"
 #include "wgut_shader.h"
 #include "MeshBuilder.h"
-#include <gsl/span>
+#include <span>
+#include <array>
 #include <directXMath.h>
 #include <assert.h>
 
@@ -100,19 +101,19 @@ public:
 };
 
 template <typename T, size_t N>
-static gsl::span<const uint8_t> byte_span(const T (&a)[N])
+static std::span<const uint8_t> byte_span(const T (&a)[N])
 {
-    return gsl::span<const uint8_t>((const uint8_t *)a, sizeof(T) * N);
+    return std::span<const uint8_t>((const uint8_t *)a, sizeof(T) * N);
 }
 template <typename T>
-static gsl::span<const uint8_t> byte_span(const std::vector<T> &v)
+static std::span<const uint8_t> byte_span(const std::vector<T> &v)
 {
-    return gsl::span<const uint8_t>((const uint8_t *)v.data(), sizeof(T) * v.size());
+    return std::span<const uint8_t>((const uint8_t *)v.data(), sizeof(T) * v.size());
 }
 template <typename T>
-static gsl::span<const uint8_t> byte_span(const gsl::span<const T> &v)
+static std::span<const uint8_t> byte_span(const std::span<const T> &v)
 {
-    return gsl::span<const uint8_t>((const uint8_t *)v.data(), v.size_bytes());
+    return std::span<const uint8_t>((const uint8_t *)v.data(), v.size_bytes());
 }
 
 class VertexBuffer
@@ -132,15 +133,15 @@ public:
 
     template <typename T>
     bool Vertices(const ComPtr<ID3D11Device> &device,
-                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
+                  const ComPtr<ID3DBlob> &vsByteCode, const std::span<const ::wgut::shader::InputLayoutElement> &layout,
                   const T &vertices)
     {
         return Vertices(device, vsByteCode, layout, byte_span(vertices));
     }
 
     bool Vertices(const ComPtr<ID3D11Device> &device,
-                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout,
-                  const gsl::span<const uint8_t> &vertices)
+                  const ComPtr<ID3DBlob> &vsByteCode, const std::span<const ::wgut::shader::InputLayoutElement> &layout,
+                  const std::span<const uint8_t> &vertices)
     {
         // DXGI_FORMAT Format;
         // UINT AlignedByteOffset;
@@ -192,7 +193,7 @@ public:
         return Indices(device, sizeof(indices[0]), byte_span(indices));
     }
 
-    bool Indices(const ComPtr<ID3D11Device> &device, UINT stride, const gsl::span<const uint8_t> &indices)
+    bool Indices(const ComPtr<ID3D11Device> &device, UINT stride, const std::span<const uint8_t> &indices)
     {
         m_indexCount = static_cast<UINT>(indices.size() / stride);
 
@@ -232,7 +233,7 @@ public:
     }
 
     void MeshData(const ComPtr<ID3D11Device> &device,
-                  const ComPtr<ID3DBlob> &vsByteCode, const gsl::span<const ::wgut::shader::InputLayoutElement> &layout, const mesh::MeshBuilder &data)
+                  const ComPtr<ID3DBlob> &vsByteCode, const std::span<const ::wgut::shader::InputLayoutElement> &layout, const mesh::MeshBuilder &data)
     {
         UINT stride = 0;
         for (auto &element : layout)
@@ -298,7 +299,7 @@ public:
         context->PSSetShader(m_ps.Get(), nullptr, 0);
     }
 
-    void Setup(const ComPtr<ID3D11DeviceContext> &context, const gsl::span<ID3D11Buffer *> &constants)
+    void Setup(const ComPtr<ID3D11DeviceContext> &context, const std::span<ID3D11Buffer *> &constants)
     {
         context->VSSetShader(m_vs.Get(), nullptr, 0);
         context->VSSetConstantBuffers(0, static_cast<UINT>(constants.size()), constants.data());

@@ -1,7 +1,7 @@
 #pragma once
 #include "wgut_common.h"
 #include <d3dcompiler.h>
-#include <gsl/span>
+#include <span>
 #include <memory>
 #include <string_view>
 #include <stdexcept>
@@ -154,7 +154,7 @@ public:
         return DXGI_FORMAT_UNKNOWN;
     }
 
-    static std::shared_ptr<InputLayout> Create(const gsl::span<const D3D11_PARAMETER_DESC> &inParams)
+    static std::shared_ptr<InputLayout> Create(const std::span<const D3D11_PARAMETER_DESC> &inParams)
     {
         auto layout = std::shared_ptr<InputLayout>(new InputLayout);
 
@@ -260,7 +260,7 @@ public:
         return layout;
     }
 
-    gsl::span<const InputLayoutElement> Elements() const
+    std::span<const InputLayoutElement> Elements() const
     {
         return m_layout;
     }

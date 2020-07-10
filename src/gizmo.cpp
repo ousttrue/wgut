@@ -50,7 +50,7 @@ GizmoSystem::Buffer GizmoSystem::end()
     //     static_cast<uint32_t>(sizeof(r.triangles[0])),
     // };
     return {
-        .Vertices = gsl::span<const Vertex>((const Vertex *)r.vertices.data(), r.vertices.size()),
+        .Vertices = std::span<const Vertex>((const Vertex *)r.vertices.data(), r.vertices.size()),
         .Indices = r.triangles,
     };
 }

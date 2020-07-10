@@ -14,6 +14,7 @@
         "wgut"
     ],
     "files.associations": {
+        "*.uss": "css",
         "stdexcept": "cpp",
         "span": "cpp",
         "memory": "cpp",
@@ -45,6 +46,27 @@
         "string": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "xlocinfo": "cpp"
+        "xlocinfo": "cpp",
+        "cctype": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "cstddef": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "cwchar": "cpp",
+        "exception": "cpp",
+        "iosfwd": "cpp",
+        "iostream": "cpp",
+        "limits": "cpp",
+        "map": "cpp",
+        "new": "cpp",
+        "system_error": "cpp",
+        "unordered_map": "cpp",
+        "xfacet": "cpp",
+        "xstddef": "cpp",
+        "xtr1common": "cpp",
+        "xtree": "cpp"
     }
 }
