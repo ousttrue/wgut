@@ -55,7 +55,7 @@ public:
     GizmoFrameState state;
 
     // Public methods
-    void gizmo_system_impl::update(const GizmoFrameState &state)
+    void update(const GizmoFrameState &state)
     {
         auto lastButton = this->state.button;
         this->state = state;

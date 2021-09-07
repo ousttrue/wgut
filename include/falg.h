@@ -182,7 +182,7 @@ inline T Add(const T &lhs, const T &rhs)
     auto &l = ARRAY::cast(lhs);
     auto &r = ARRAY::cast(rhs);
 
-    ARRAY::type value;
+    T value;
     for (size_t i = 0; i < ARRAY::length; ++i)
     {
         value[i] = l[i] + r[i];
@@ -197,7 +197,7 @@ inline T Sub(const T &lhs, const T &rhs)
     auto &l = ARRAY::cast(lhs);
     auto &r = ARRAY::cast(rhs);
 
-    ARRAY::type value;
+    T value;
     for (size_t i = 0; i < ARRAY::length; ++i)
     {
         value[i] = l[i] - r[i];
@@ -212,7 +212,7 @@ inline T EachMul(const T &lhs, const T &rhs)
     auto &l = ARRAY::cast(lhs);
     auto &r = ARRAY::cast(rhs);
 
-    ARRAY::type value;
+    T value;
     for (size_t i = 0; i < ARRAY::length; ++i)
     {
         value[i] = l[i] * r[i];
