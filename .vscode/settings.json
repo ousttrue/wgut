@@ -1,4 +1,8 @@
 {
+    "cmake.generator": "Ninja",
+    "cmake.configureArgs": [
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
+    ],
     "C_Cpp.clang_format_style": "file",
     "cSpell.words": [
         "FOVY",
