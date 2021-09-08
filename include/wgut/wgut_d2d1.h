@@ -11,7 +11,7 @@ ComPtr<ID2D1DeviceContext> DeviceFromD3D11(const ComPtr<ID3D11Device> &device)
     ComPtr<IDXGIDevice> dxgiDevice;
     if (FAILED(device.As(&dxgiDevice)))
     {
-        return false;
+        return nullptr;
     }
 
     D2D1_FACTORY_OPTIONS options = {};

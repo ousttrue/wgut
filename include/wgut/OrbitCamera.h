@@ -116,8 +116,10 @@ struct OrbitCamera
     {
         // view transform
         auto origin = Transform(gaze, {0, 0, 0, 1});
-        auto q_yaw = XMQuaternionRotationAxis(XMLoadFloat3(&XMFLOAT3{0.0f, 1.0f, 0.0f}), yawRadians);
-        auto q_pitch = XMQuaternionRotationAxis(XMLoadFloat3(&XMFLOAT3{1.0f, 0.0f, 0.0f}), pitchRadians);
+        auto y_axis = XMFLOAT3{0.0f, 1.0f, 0.0f};
+        auto q_yaw = XMQuaternionRotationAxis(XMLoadFloat3(&y_axis), yawRadians);
+        auto x_axis = XMFLOAT3{1.0f, 0.0f, 0.0f};
+        auto q_pitch = XMQuaternionRotationAxis(XMLoadFloat3(&x_axis), pitchRadians);
         std::array<float, 4> rot;
         XMStoreFloat4((XMFLOAT4 *)&rot, XMQuaternionMultiply(q_yaw, q_pitch));
         auto transform = origin * Transform{shift, rot};

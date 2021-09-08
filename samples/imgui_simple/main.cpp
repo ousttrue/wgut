@@ -95,7 +95,7 @@ static wgut::d3d11::DrawablePtr CreateDrawable(const Microsoft::WRL::ComPtr<ID3D
     auto shader = wgut::d3d11::Shader::Create(device, vs.ByteCode, ps.ByteCode);
 
     auto drawable = std::make_shared<wgut::d3d11::Drawable>(vb);
-    auto &submesh = drawable->AddSubmesh();
+    auto submesh = drawable->AddSubmesh();
     submesh->Count = vb->IndexCount();
     submesh->Shader = shader;
 
